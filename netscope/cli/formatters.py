@@ -95,6 +95,9 @@ def format_test_result(result: TestResult, console: Console) -> None:
         for key, value in result.metrics.items():
             if key == "hop_details":
                 continue
+            if key == "open_ports" and isinstance(value, list):
+                metrics_table.add_row("Open Ports", ", ".join(str(p) for p in value) if value else "None")
+                continue
             if isinstance(value, (list, dict)):
                 continue
             metrics_table.add_row(key.replace("_", " ").title(), str(value))
@@ -216,6 +219,21 @@ def get_interpretation(result: TestResult) -> str:
             "In plain terms: no IP addresses were returned for this name. "
             "The name might be wrong, the domain might not exist, or there could be a DNS or network issue."
         )
+
+    if result.test_name == "Port Scan":
+        open_count = metrics.get("open_count", 0)
+        total = metrics.get("total_ports", 0)
+        if open_count == 0 and total > 0:
+            return (
+                "In plain terms: no ports accepted a connection in the scanned set. "
+                "The host may be filtering these ports, or no services are listening on them."
+            )
+        if open_count:
+            return (
+                f"In plain terms: {open_count} of {total} scanned port(s) are open and accepting connections. "
+                "Common open ports (e.g. 22, 80, 443) often indicate SSH, HTTP, or HTTPS services."
+            )
+        return "In plain terms: no ports were scanned (empty port list)."
 
     return ""
 

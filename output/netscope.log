@@ -59,3 +59,6 @@
 2026-02-12 22:36:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_address_1=142.251.47.14
 2026-02-12 22:36:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_count=1
 2026-02-12 22:36:49 | INFO     | netscope.cli.main:_run_interactive:253 | NetScope exited normally
+2026-02-12 23:13:00 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-12 23:13:00 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-12 23:13:17 | INFO     | netscope.cli.main:_run_interactive:140 | NetScope exited normally

@@ -86,17 +86,22 @@ EXPLAIN_DNS = """
 
 EXPLAIN_PORTS = """
 [bold]What it does:[/bold]
-  Checks which TCP (or UDP) ports are open on a host—i.e. which
-  services are listening and reachable.
+  Checks which TCP ports are open on a host by attempting a connection
+  to each port (pure Python, no nmap required). Shows which ports
+  accept connections and which do not.
 
 [bold]When to use:[/bold]
   • Verify a service (web, SSH, etc.) is reachable
-  • Security audits (find open ports)
+  • Quick check of common ports (top 20 or top 100)
   • Troubleshoot "service not responding"
 
-[bold]Note:[/bold]
-  Port scanning is planned for a future release. Use [bold]ping[/bold] and
-  [bold]traceroute[/bold] for now.
+[bold]What you get:[/bold]
+  A list of open ports and counts. Presets: top 20 or top 100 common
+  ports; you can also specify a custom port list.
+
+[bold]Related tests:[/bold]
+  • Ping: Check if the host is reachable first
+  • Traceroute: See path to the host
 """
 
 EXPLAIN_QUICK_CHECK = """

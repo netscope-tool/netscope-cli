@@ -30,6 +30,7 @@ from netscope.core.detector import SystemDetector
 from netscope.core.executor import TestExecutor
 from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
+from netscope.modules.ports import PortScanTest
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
 
@@ -195,6 +196,26 @@ def _run_interactive(
                 _t = threading.Thread(target=_run)
                 _t.start()
                 with Live(Spinner("dots", text="Resolving DNS…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
+                results = [result]
+            elif choice == "Port Scan":
+                preset_choice = questionary.select(
+                    "Port preset:",
+                    choices=[
+                        Choice("Top 20 common ports", value="top20"),
+                        Choice("Top 100 common ports", value="top100"),
+                    ],
+                ).ask()
+                preset = preset_choice or "top20"
+                test = PortScanTest(executor, csv_handler)
+                _result_holder = []
+                def _run():
+                    _result_holder.append(test.run(target, preset=preset))
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Scanning ports…"), console=console, refresh_per_second=8):
                     while _t.is_alive():
                         _t.join(timeout=0.05)
                 result = _result_holder[0]
@@ -478,6 +499,7 @@ def show_main_menu() -> str:
         Choice("Ping Test — Check if host is reachable and measure latency", value="Ping Test"),
         Choice("Traceroute Test — Show path and hops to target", value="Traceroute Test"),
         Choice("DNS Lookup — Resolve hostname to IP address(es)", value="DNS Lookup"),
+        Choice("Port Scan — Check which TCP ports are open", value="Port Scan"),
         Choice("Exit", value="Exit"),
     ]
 
@@ -627,6 +649,62 @@ def dns(
         test_run_dir,
         {
             "test_type": "DNS Lookup",
+            "target": target,
+            "status": result.status,
+            "system_info": system_info.model_dump(mode="json"),
+        },
+    )
+
+
+@app.command()
+def ports(
+    target: str = typer.Argument(..., help="Target IP or hostname"),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory for results",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output",
+    ),
+    output_format: str = typer.Option(
+        "rich",
+        "--format",
+        "-f",
+        help="Output format: 'rich' (default) or 'json'",
+    ),
+    preset: str = typer.Option(
+        "top20",
+        "--preset",
+        "-p",
+        help="Port list preset: 'top20' or 'top100'",
+    ),
+):
+    """
+    Run a port scan in non-interactive mode (TCP connect, no nmap required).
+    """
+    config, logger, _detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("port_scan")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+
+    console.print(f"\n[bold cyan]Running Port Scan on {target} (preset: {preset})...[/bold cyan]\n")
+    test = PortScanTest(executor, csv_handler)
+    result = test.run(target, preset=preset)
+
+    if output_format == "json":
+        _output_results_json(result)
+    else:
+        format_test_result(result, console)
+
+    config.save_metadata(
+        test_run_dir,
+        {
+            "test_type": "Port Scan",
             "target": target,
             "status": result.status,
             "system_info": system_info.model_dump(mode="json"),
