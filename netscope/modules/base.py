@@ -4,13 +4,16 @@ Base test class and models.
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
-from pydantic import BaseModel
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class TestResult(BaseModel):
     """Test result model."""
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     test_name: str
     target: str
     status: str  # 'success', 'warning', 'failure'
@@ -20,9 +23,6 @@ class TestResult(BaseModel):
     summary: Optional[str] = None
     raw_output: Optional[str] = None
     error: Optional[str] = None
-    
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class BaseTest(ABC):

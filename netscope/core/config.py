@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any, Optional
 import json
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def load_config_file() -> dict[str, Any]:
@@ -50,13 +50,12 @@ def load_config_file() -> dict[str, Any]:
 
 class AppConfig(BaseModel):
     """Application configuration."""
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     output_dir: Path = Field(default=Path("output"))
     verbose: bool = False
     timeout: int = 30
-    
-    class Config:
-        arbitrary_types_allowed = True
     
     @field_validator('output_dir', mode='before')
     @classmethod

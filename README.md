@@ -131,6 +131,8 @@ netscope explain ping       # what the test does and how to interpret results
 netscope explain traceroute
 netscope glossary           # list networking terms
 netscope glossary latency   # definition of a term
+netscope history            # last 10 test runs (use -o to point to output dir)
+netscope history -n 5       # last 5 runs
 ```
 
 ### Optional config file
@@ -152,6 +154,15 @@ CLI options (e.g. `-o`, `-v`) override these values.
 3. Select a test from the menu
 4. Enter target host/IP (e.g. `8.8.8.8` or `google.com`)
 5. View results in the terminal; detailed logs and CSV are in the `output/` directory
+
+## Running tests
+
+With the virtual environment activated and from the project directory:
+
+```bash
+pip install -r requirements.txt   # includes pytest
+pytest tests/ -v
+```
 
 ## Requirements
 

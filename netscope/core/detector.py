@@ -6,20 +6,19 @@ import platform
 import sys
 import shutil
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import socket
 
 
 class SystemInfo(BaseModel):
     """System information model."""
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     os_type: str  # 'Linux', 'Darwin', 'Windows'
     platform: str
     python_version: str
     hostname: str
-    
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class MissingTool(BaseModel):
@@ -98,7 +97,8 @@ class SystemDetector:
             "Windows": {
                 "ping": "Pre-installed",
                 "tracert": "Pre-installed",
-                "nslookup": "Pre-installed",
+                "nslookup": "Pre-installed (NetScope uses nslookup for DNS on Windows)",
+                "dig": "Pre-installed (NetScope uses nslookup for DNS on Windows)",
             },
         }
         

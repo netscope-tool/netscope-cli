@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 import questionary
+from questionary import Choice
 import typer
 from rich.console import Console
 from rich.live import Live
@@ -104,6 +105,9 @@ def _run_interactive(
 
     # Initialize configuration and context
     config, logger, detector, system_info = _init_context(output_dir, verbose)
+
+    # First-run welcome (once per machine)
+    _first_run_welcome(config.output_dir)
 
     # Print system information
     print_system_info(system_info)
@@ -370,20 +374,113 @@ def glossary(
     console.print(Panel(definition.strip(), title=f"📖 {display_name}", border_style="cyan", expand=False))
 
 
+@app.command()
+def history(
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory where runs are stored (default: output)",
+    ),
+    limit: int = typer.Option(
+        10,
+        "--limit",
+        "-n",
+        help="Maximum number of runs to show",
+    ),
+):
+    """
+    Show the last N test runs (from the output directory).
+    """
+    from rich.table import Table
+
+    out = output_dir if output_dir is not None else Path("output")
+    if not out.exists() or not out.is_dir():
+        console.print(f"[yellow]No output directory at {out}[/yellow]")
+        return
+
+    # Subdirs named like 2026-02-12_223600_quick_network_check
+    import re
+    pattern = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{6}_.+")
+    run_dirs = sorted(
+        [d for d in out.iterdir() if d.is_dir() and pattern.match(d.name)],
+        key=lambda p: p.name,
+        reverse=True,
+    )[:limit]
+
+    if not run_dirs:
+        console.print("[dim]No test runs found.[/dim]")
+        return
+
+    table = Table(title="Recent test runs", show_header=True)
+    table.add_column("Time", style="cyan")
+    table.add_column("Test", style="white")
+    table.add_column("Target", style="white")
+    table.add_column("Status", style="white")
+
+    for run_dir in run_dirs:
+        meta_file = run_dir / "metadata.json"
+        time_str = run_dir.name[:16].replace("_", " ")  # 2026-02-12 223600
+        test_name = run_dir.name
+        target = "—"
+        status = "—"
+        if meta_file.exists():
+            try:
+                with open(meta_file, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                test_name = meta.get("test_type", test_name)
+                target = meta.get("target", "—")
+                status = meta.get("status", "—")
+            except Exception:
+                pass
+        table.add_row(time_str, test_name, target, status)
+
+    console.print()
+    console.print(table)
+
+
+def _first_run_welcome(output_dir: Path) -> None:
+    """Show welcome message on first run and create sentinel file."""
+    sentinel = Path.home() / ".netscope_first_run_done"
+    if sentinel.exists():
+        return
+    try:
+        from rich.panel import Panel
+        console.print(
+            Panel(
+                "Welcome to [bold cyan]NetScope[/bold cyan].\n\n"
+                "Choose a test from the menu, enter a target (IP or hostname), "
+                "and view results in the terminal. Results are also saved under "
+                f"[dim]{output_dir}/[/dim]\n\n"
+                "Use [cyan]netscope explain <test>[/cyan] to learn what each test does, "
+                "and [cyan]netscope glossary[/cyan] for networking terms.",
+                title="👋 Welcome",
+                border_style="green",
+                expand=False,
+            )
+        )
+        console.print()
+    finally:
+        try:
+            sentinel.touch()
+        except OSError:
+            pass
+
+
 def show_main_menu() -> str:
-    """Display main menu and return user choice."""
+    """Display main menu and return user choice (with short descriptions)."""
     console.print("\n[bold cyan]═══════════════════════════════════════[/bold cyan]")
     console.print("[bold cyan]           Main Menu[/bold cyan]")
     console.print("[bold cyan]═══════════════════════════════════════[/bold cyan]\n")
-    
+
     choices = [
-        "Quick Network Check",
-        "Ping Test",
-        "Traceroute Test",
-        "DNS Lookup",
-        "Exit",
+        Choice("Quick Network Check — Run ping, traceroute, and DNS in one go", value="Quick Network Check"),
+        Choice("Ping Test — Check if host is reachable and measure latency", value="Ping Test"),
+        Choice("Traceroute Test — Show path and hops to target", value="Traceroute Test"),
+        Choice("DNS Lookup — Resolve hostname to IP address(es)", value="DNS Lookup"),
+        Choice("Exit", value="Exit"),
     ]
-    
+
     return questionary.select("Select a test:", choices=choices).ask()
 
 

@@ -5,7 +5,7 @@ Command execution engine.
 import subprocess
 import time
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from loguru import logger
 
 from netscope.core.detector import SystemInfo
@@ -13,16 +13,15 @@ from netscope.core.detector import SystemInfo
 
 class CommandResult(BaseModel):
     """Result of a command execution."""
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     command: str
     return_code: int
     stdout: str
     stderr: str
     duration: float
     success: bool
-    
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class TestExecutor:
