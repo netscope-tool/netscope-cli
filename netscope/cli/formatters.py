@@ -2,14 +2,20 @@
 Rich formatting utilities for CLI output.
 """
 
+import socket
+import urllib.request
 from typing import Iterable, Sequence
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.align import Align
 
 from netscope.modules.base import TestResult
 from netscope.core.detector import SystemInfo
+
+# Cache for network status so we don't re-fetch every time we print the widget
+_network_status_cache: dict | None = None
 
 
 def print_header() -> None:
@@ -308,14 +314,14 @@ def format_quick_check_summary(
     console: Console,
 ) -> None:
     """
-    Display a compact summary table for Quick Network Check results.
+    Display a compact summary dashboard for Quick Network Check results.
 
-    Each row shows test name, status and a few key metrics if available.
+    One panel with Pass/Fail per test and key metrics, plus plain-language explanation.
     """
     if not results:
         return
 
-    table = Table(title="Quick Network Check Summary", show_header=True, box=None)
+    table = Table(show_header=True, box=None)
     table.add_column("Test", style="cyan")
     table.add_column("Status", style="white")
     table.add_column("Key Metrics", style="white")
@@ -341,14 +347,95 @@ def format_quick_check_summary(
 
         table.add_row(result.test_name, status_text, key_metrics)
 
+    # Single dashboard panel with Pass/Fail and key metrics
     console.print()
-    console.print(table)
+    console.print(Panel(table, title="Quick Network Check — Summary", border_style="cyan", expand=False))
 
     # Plain-language explanation for the whole run
     explanation = get_quick_check_interpretation(results, results[0].target)
     if explanation:
         console.print()
         console.print(Panel(explanation, title="💡 In plain language", border_style="dim"))
+
+
+def get_network_status(timeout: float = 2.0) -> dict:
+    """
+    Get local IP, public IP, and status (online / local_only / offline).
+    Result is cached for the session so we don't re-fetch every time.
+    """
+    global _network_status_cache
+    if _network_status_cache is not None:
+        return _network_status_cache
+
+    local_ip = ""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(timeout)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except OSError:
+        try:
+            local_ip = socket.gethostbyname(socket.gethostname()) or ""
+        except OSError:
+            pass
+
+    public_ip = ""
+    try:
+        req = urllib.request.Request(
+            "https://api.ipify.org",
+            headers={"User-Agent": "NetScope/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            public_ip = resp.read().decode().strip() or ""
+    except Exception:
+        pass
+
+    if public_ip:
+        status = "online"
+    elif local_ip:
+        status = "local_only"
+    else:
+        status = "offline"
+
+    _network_status_cache = {
+        "local_ip": local_ip or "—",
+        "public_ip": public_ip or "—",
+        "status": status,
+    }
+    return _network_status_cache
+
+
+def print_network_status(console: Console) -> None:
+    """
+    Print a small network status panel (colored dot + local IP, public IP, status)
+    aligned to the right bottom of the terminal. Shown at session start and after results.
+    """
+    data = get_network_status()
+    status = data["status"]
+    if status == "online":
+        dot = "[green]●[/green]"
+        status_text = "[green]Online[/green]"
+    elif status == "local_only":
+        dot = "[yellow]●[/yellow]"
+        status_text = "[yellow]Local only[/yellow]"
+    else:
+        dot = "[red]●[/red]"
+        status_text = "[red]Offline[/red]"
+
+    lines = [
+        f" {dot} {status_text}",
+        f" Local IP:  [dim]{data['local_ip']}[/dim]",
+        f" Public IP: [dim]{data['public_ip']}[/dim]",
+    ]
+    panel = Panel(
+        "\n".join(lines),
+        title="[bold]Network[/bold]",
+        border_style="dim",
+        padding=(0, 1),
+        expand=False,
+    )
+    console.print(Align(panel, align="right"))
 
 
 def get_error_guidance(exception: Exception, test_name: str = "", target: str = "") -> list[str]:

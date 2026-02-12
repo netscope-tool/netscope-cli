@@ -23,6 +23,7 @@ from netscope.cli.formatters import (
     get_error_guidance,
     iter_results,
     print_header,
+    print_network_status,
     print_system_info,
 )
 from netscope.core.config import AppConfig
@@ -112,6 +113,9 @@ def _run_interactive(
 
     # Print system information
     print_system_info(system_info)
+
+    # Network status widget (right-aligned: colored dot + local/public IP)
+    print_network_status(console)
 
     # Check for required tools
     console.print("\n[bold cyan]Checking for required tools...[/bold cyan]")
@@ -272,6 +276,9 @@ def _run_interactive(
             )
 
             console.print(f"\n[bold green]✓ Results saved to:[/bold green] {test_run_dir}")
+
+            # Show network status again (right-bottom) after results
+            print_network_status(console)
 
         except Exception as e:  # pragma: no cover - defensive
             logger.error(f"Test failed: {e}")
