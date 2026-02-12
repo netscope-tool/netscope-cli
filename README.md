@@ -13,44 +13,64 @@ A comprehensive CLI tool for network diagnostics, testing, and reporting.
 - ✅ Structured logging to files
 - ✅ Beautiful terminal output
 
-## Installation
+## Getting started
+
+### Prerequisites
+
+- **Git** – to clone the repository  
+- **Python 3.9+** – [python.org](https://www.python.org/downloads/) or your OS package manager  
 
 ### 1. Clone the repository
 
+Clone the repo and go into the project directory. The folder name depends on how you cloned (e.g. `netscope-cli` if you cloned that repo).
+
 ```bash
-git clone https://github.com/yourusername/netscope.git
-cd netscope
+git clone https://github.com/netscope-tool/netscope-cli.git
+cd netscope-cli
 ```
+
+**Important:** All following commands must be run from this project directory (the one that contains `setup.py`, `requirements.txt`, and the `netscope` folder).
 
 ### 2. Create and activate a virtual environment
 
-On recent macOS/Homebrew Python setups, trying to run `pip install -r requirements.txt` **system‑wide** can fail with an `externally-managed-environment` / PEP 668 error.  
-The recommended and safest way is to use a **virtual environment** inside the project.
+Installing packages **system‑wide** can fail on macOS/Homebrew and some Linux setups with an `externally-managed-environment` error. Use a **virtual environment** in the project directory.
+
+**macOS / Linux (Terminal, bash/zsh):**
 
 ```bash
-# Create a virtual environment in .venv/
+# From the project directory (e.g. ~/.../netscope-cli)
 python3 -m venv .venv
-
-# Activate it (macOS / Linux)
 source .venv/bin/activate
-
-# On Windows (PowerShell)
-# .venv\Scripts\Activate.ps1
 ```
 
-You should now see `(.venv)` in your shell prompt.
+**Windows – Command Prompt (cmd):**
 
-### 3. Install dependencies and the package (development mode)
+```cmd
+REM From the project directory (e.g. C:\Users\You\netscope-cli)
+python -m venv .venv
+.venv\Scripts\activate.bat
+```
 
-With the virtual environment **activated**:
+**Windows – PowerShell:**
+
+```powershell
+# From the project directory (e.g. C:\Users\You\netscope-cli)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+You should see `(.venv)` (or `.venv` on Windows) in your prompt. If you open a new terminal later, **go back into the project directory and activate the venv again** before running `netscope`.
+
+### 3. Install dependencies and NetScope
+
+With the virtual environment **activated** and from the **project directory**:
 
 ```bash
-# Install project dependencies
 pip install -r requirements.txt
-
-# Install netscope in editable / development mode
 pip install -e .
 ```
+
+After this, the `netscope` command is available while the venv is active.
 
 ## Usage
 
@@ -127,11 +147,11 @@ CLI options (e.g. `-o`, `-v`) override these values.
 
 ## Quick Start
 
-1. Run `netscope`
-2. Select a test from the menu
-3. Enter target host/IP
-4. View results in terminal
-5. Find detailed logs in `output/` directory
+1. Open a terminal, go to the project directory, and activate the venv (see [Getting started](#getting-started) above).
+2. Run `netscope`
+3. Select a test from the menu
+4. Enter target host/IP (e.g. `8.8.8.8` or `google.com`)
+5. View results in the terminal; detailed logs and CSV are in the `output/` directory
 
 ## Requirements
 

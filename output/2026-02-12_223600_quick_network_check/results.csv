@@ -1,0 +1,11 @@
+timestamp,test_name,target,metric,value,status,details
+2026-02-12T22:36:00.838267,Ping Test,google.com,packet_loss,0,success,Host google.com is reachable. Latency min/avg/max: 71.2/78.3/83.9 ms
+2026-02-12T22:36:00.838267,Ping Test,google.com,min_latency,71.226,success,Host google.com is reachable. Latency min/avg/max: 71.2/78.3/83.9 ms
+2026-02-12T22:36:00.838267,Ping Test,google.com,avg_latency,78.256,success,Host google.com is reachable. Latency min/avg/max: 71.2/78.3/83.9 ms
+2026-02-12T22:36:00.838267,Ping Test,google.com,max_latency,83.876,success,Host google.com is reachable. Latency min/avg/max: 71.2/78.3/83.9 ms
+2026-02-12T22:36:00.838267,Ping Test,google.com,mdev_latency,4.556,success,Host google.com is reachable. Latency min/avg/max: 71.2/78.3/83.9 ms
+2026-02-12T22:36:00.838267,Ping Test,google.com,packets_received,4,success,Host google.com is reachable. Latency min/avg/max: 71.2/78.3/83.9 ms
+2026-02-12T22:36:04.030473,Traceroute Test,google.com,hop_count,10,success,Traced route to google.com in 10 hops
+2026-02-12T22:36:04.030473,Traceroute Test,google.com,destination_reached,True,success,Traced route to google.com in 10 hops
+2026-02-12T22:36:35.588241,DNS Lookup,google.com,ip_address_1,142.251.47.14,success,Resolved google.com to 1 address(es): 142.251.47.14
+2026-02-12T22:36:35.588241,DNS Lookup,google.com,ip_count,1,success,Resolved google.com to 1 address(es): 142.251.47.14

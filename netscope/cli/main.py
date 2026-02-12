@@ -5,12 +5,16 @@ Main CLI application using Typer.
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 import questionary
 import typer
 from rich.console import Console
+from rich.live import Live
+from rich.progress import Progress, SpinnerColumn, TextColumn, TaskProgressColumn
+from rich.spinner import Spinner
 
 from netscope.cli.formatters import (
     format_quick_check_summary,
@@ -157,22 +161,61 @@ def _run_interactive(
         try:
             if choice == "Ping Test":
                 test = PingTest(executor, csv_handler)
-                result = test.run(target)
-                results: Sequence = [result]
+                _result_holder: list = []
+                def _run():
+                    _result_holder.append(test.run(target))
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Pinging…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
+                results = [result]
             elif choice == "Traceroute Test":
                 test = TracerouteTest(executor, csv_handler)
-                result = test.run(target)
+                _result_holder = []
+                def _run():
+                    _result_holder.append(test.run(target))
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Tracing route…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
                 results = [result]
             elif choice == "DNS Lookup":
                 test = DNSTest(executor, csv_handler)
-                result = test.run(target)
+                _result_holder = []
+                def _run():
+                    _result_holder.append(test.run(target))
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Resolving DNS…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
                 results = [result]
             elif choice == "Quick Network Check":
-                # Run all tests
                 results = []
-                for test_class in (PingTest, TracerouteTest, DNSTest):
-                    test = test_class(executor, csv_handler)
+                with Progress(
+                    TextColumn("[bold cyan]{task.description}[/bold cyan]"),
+                    SpinnerColumn(),
+                    TaskProgressColumn(),
+                    console=console,
+                    transient=True,
+                ) as progress:
+                    task = progress.add_task("Running: Ping Test…", total=3)
+                    test = PingTest(executor, csv_handler)
                     results.append(test.run(target))
+                    progress.update(task, advance=1, description="Running: Traceroute Test…")
+
+                    test = TracerouteTest(executor, csv_handler)
+                    results.append(test.run(target))
+                    progress.update(task, advance=1, description="Running: DNS Lookup…")
+
+                    test = DNSTest(executor, csv_handler)
+                    results.append(test.run(target))
+                    progress.update(task, advance=1, description="Done")
 
             # Display results
             if choice == "Quick Network Check":

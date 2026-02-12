@@ -18,3 +18,44 @@
 2026-02-12 22:05:29 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: max_latency=183.471
 2026-02-12 22:05:29 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packets_received=4
 2026-02-12 22:05:32 | INFO     | netscope.cli.main:_run_interactive:197 | NetDiag exited normally
+2026-02-12 22:30:20 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-12 22:30:20 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-12 22:30:30 | INFO     | netscope.cli.main:_run_interactive:153 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-12_223030_quick_network_check
+2026-02-12 22:30:30 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-12_223030_quick_network_check/results.csv
+2026-02-12 22:30:30 | INFO     | netscope.core.executor:run_command:55 | Executing command: ping -c 4 8.8.8.8
+2026-02-12 22:30:34 | INFO     | netscope.core.executor:run_command:76 | Command completed: ping -c 4 8.8.8.8 (return code: 0, duration: 3.10s)
+2026-02-12 22:30:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packet_loss=0
+2026-02-12 22:30:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: min_latency=74.83
+2026-02-12 22:30:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: avg_latency=77.698
+2026-02-12 22:30:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: max_latency=79.036
+2026-02-12 22:30:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: mdev_latency=1.683
+2026-02-12 22:30:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packets_received=4
+2026-02-12 22:30:34 | INFO     | netscope.core.executor:run_command:55 | Executing command: traceroute -n -m 15 8.8.8.8
+2026-02-12 22:31:04 | INFO     | netscope.core.executor:run_command:76 | Command completed: traceroute -n -m 15 8.8.8.8 (return code: 0, duration: 30.59s)
+2026-02-12 22:31:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: hop_count=6
+2026-02-12 22:31:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: destination_reached=True
+2026-02-12 22:31:04 | INFO     | netscope.core.executor:run_command:55 | Executing command: dig +short 8.8.8.8
+2026-02-12 22:31:04 | INFO     | netscope.core.executor:run_command:76 | Command completed: dig +short 8.8.8.8 (return code: 0, duration: 0.11s)
+2026-02-12 22:31:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_count=0
+2026-02-12 22:31:24 | INFO     | netscope.cli.main:_run_interactive:251 | NetScope exited normally
+2026-02-12 22:35:40 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-12 22:35:40 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-12 22:36:00 | INFO     | netscope.cli.main:_run_interactive:153 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-12_223600_quick_network_check
+2026-02-12 22:36:00 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-12_223600_quick_network_check/results.csv
+2026-02-12 22:36:00 | INFO     | netscope.core.executor:run_command:55 | Executing command: ping -c 4 google.com
+2026-02-12 22:36:04 | INFO     | netscope.core.executor:run_command:76 | Command completed: ping -c 4 google.com (return code: 0, duration: 3.19s)
+2026-02-12 22:36:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packet_loss=0
+2026-02-12 22:36:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: min_latency=71.226
+2026-02-12 22:36:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: avg_latency=78.256
+2026-02-12 22:36:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: max_latency=83.876
+2026-02-12 22:36:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: mdev_latency=4.556
+2026-02-12 22:36:04 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packets_received=4
+2026-02-12 22:36:04 | INFO     | netscope.core.executor:run_command:55 | Executing command: traceroute -n -m 15 google.com
+2026-02-12 22:36:35 | INFO     | netscope.core.executor:run_command:76 | Command completed: traceroute -n -m 15 google.com (return code: 0, duration: 31.55s)
+2026-02-12 22:36:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: hop_count=10
+2026-02-12 22:36:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: destination_reached=True
+2026-02-12 22:36:35 | INFO     | netscope.core.executor:run_command:55 | Executing command: dig +short google.com
+2026-02-12 22:36:35 | INFO     | netscope.core.executor:run_command:76 | Command completed: dig +short google.com (return code: 0, duration: 0.09s)
+2026-02-12 22:36:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_address_1=142.251.47.14
+2026-02-12 22:36:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_count=1
+2026-02-12 22:36:49 | INFO     | netscope.cli.main:_run_interactive:253 | NetScope exited normally

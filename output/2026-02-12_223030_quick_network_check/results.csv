@@ -1,0 +1,10 @@
+timestamp,test_name,target,metric,value,status,details
+2026-02-12T22:30:30.910823,Ping Test,8.8.8.8,packet_loss,0,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 74.8/77.7/79.0 ms
+2026-02-12T22:30:30.910823,Ping Test,8.8.8.8,min_latency,74.83,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 74.8/77.7/79.0 ms
+2026-02-12T22:30:30.910823,Ping Test,8.8.8.8,avg_latency,77.698,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 74.8/77.7/79.0 ms
+2026-02-12T22:30:30.910823,Ping Test,8.8.8.8,max_latency,79.036,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 74.8/77.7/79.0 ms
+2026-02-12T22:30:30.910823,Ping Test,8.8.8.8,mdev_latency,1.683,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 74.8/77.7/79.0 ms
+2026-02-12T22:30:30.910823,Ping Test,8.8.8.8,packets_received,4,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 74.8/77.7/79.0 ms
+2026-02-12T22:30:34.013501,Traceroute Test,8.8.8.8,hop_count,6,success,Traced route to 8.8.8.8 in 6 hops
+2026-02-12T22:30:34.013501,Traceroute Test,8.8.8.8,destination_reached,True,success,Traced route to 8.8.8.8 in 6 hops
+2026-02-12T22:31:04.606994,DNS Lookup,8.8.8.8,ip_count,0,warning,Could not resolve 8.8.8.8

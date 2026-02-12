@@ -5,7 +5,7 @@ Connectivity tests (ping, traceroute).
 import re
 import platform
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict, List
 
 from netscope.modules.base import BaseTest, TestResult
 
@@ -33,7 +33,16 @@ class PingTest(BaseTest):
         # Determine status
         if result.success and metrics.get("packet_loss", 100) < 100:
             status = "success"
-            summary = f"Host {target} is reachable. Average latency: {metrics.get('avg_latency', 'N/A')}ms"
+            avg_ = metrics.get('avg_latency')
+            if avg_ is not None:
+                min_ = metrics.get('min_latency')
+                max_ = metrics.get('max_latency')
+                if min_ is not None and max_ is not None:
+                    summary = f"Host {target} is reachable. Latency min/avg/max: {min_:.1f}/{avg_:.1f}/{max_:.1f} ms"
+                else:
+                    summary = f"Host {target} is reachable. Average latency: {avg_:.1f} ms"
+            else:
+                summary = f"Host {target} is reachable."
         elif result.success and metrics.get("packet_loss", 100) == 100:
             status = "warning"
             summary = f"Host {target} is unreachable (100% packet loss)"
@@ -69,10 +78,16 @@ class PingTest(BaseTest):
         
         # Parse latency (works for both Linux/Mac and Windows)
         # Linux/Mac: rtt min/avg/max/mdev = 10.123/15.456/20.789/2.345 ms
-        latency_match = re.search(r'min/avg/max[/=\s]+[\w]+[\s=]+[\d.]+/([\d.]+)/([\d.]+)', output)
+        latency_match = re.search(
+            r'min/avg/max[/=\s]+[\w]+[\s=]+([\d.]+)/([\d.]+)/([\d.]+)(?:/([\d.]+))?\s*ms',
+            output,
+        )
         if latency_match:
-            metrics['avg_latency'] = float(latency_match.group(1))
-            metrics['max_latency'] = float(latency_match.group(2))
+            metrics['min_latency'] = float(latency_match.group(1))
+            metrics['avg_latency'] = float(latency_match.group(2))
+            metrics['max_latency'] = float(latency_match.group(3))
+            if latency_match.group(4) is not None:
+                metrics['mdev_latency'] = float(latency_match.group(4))
         else:
             # Windows: Average = 15ms
             avg_match = re.search(r'Average\s*=\s*([\d]+)ms', output)
@@ -147,34 +162,71 @@ class TracerouteTest(BaseTest):
         return test_result
     
     def parse_output(self, output: str) -> Dict[str, Any]:
-        """Parse traceroute output."""
-        metrics = {}
-        
-        # Count hops
+        """Parse traceroute output. Includes per-hop details when parseable."""
+        metrics: Dict[str, Any] = {}
         lines = output.strip().split('\n')
-        hop_count = 0
-        
+        hop_details: List[Dict[str, Any]] = []
+
+        # Linux/macOS: " 1  192.168.1.1  1.234 ms" or " 1  10.0.0.1  2.3 ms  2.1 ms"
+        # Windows: "  1    <1 ms    <1 ms    <1 ms  192.168.1.1"
+        hop_line_linux = re.compile(
+            r'^\s*(\d+)\s+(\S+)\s+([\d.<]+)\s*ms'
+        )
+        hop_line_win = re.compile(
+            r'^\s*(\d+)\s+(?:[\d.<]+\s*ms\s+)+(\d+\.\d+\.\d+\.\d+)'
+        )
+
         for line in lines:
-            # Match hop lines (starting with number)
+            if not line.strip():
+                continue
+            # Linux/macOS style
+            m = hop_line_linux.search(line)
+            if m:
+                hop_num = int(m.group(1))
+                host = m.group(2)
+                rtt_str = m.group(3).strip()
+                rtt_ms: float = 0.0
+                if rtt_str.startswith('<'):
+                    rtt_ms = 0.0
+                else:
+                    try:
+                        rtt_ms = float(rtt_str)
+                    except ValueError:
+                        rtt_ms = 0.0
+                hop_details.append({"hop": hop_num, "host": host, "rtt_ms": rtt_ms})
+                continue
+            # Windows style (hop number then times then IP at end)
+            m = hop_line_win.search(line)
+            if m:
+                hop_num = int(m.group(1))
+                host = m.group(2)
+                hop_details.append({"hop": hop_num, "host": host, "rtt_ms": 0.0})
+                continue
+            # Fallback: any line starting with number (count only)
             if re.match(r'^\s*\d+', line):
-                hop_count += 1
-        
-        metrics['hop_count'] = hop_count
-        
-        # Extract final destination if reached
+                pass  # already counted via hop_details
+
+        metrics['hop_count'] = len(hop_details) if hop_details else sum(
+            1 for line in lines if re.match(r'^\s*\d+', line)
+        )
+        if hop_details:
+            metrics['hop_details'] = hop_details
+
         if lines:
             last_line = lines[-1]
-            # Check if we reached the destination (has IP address)
-            if re.search(r'\d+\.\d+\.\d+\.\d+', last_line):
-                metrics['destination_reached'] = True
-            else:
-                metrics['destination_reached'] = False
-        
+            metrics['destination_reached'] = bool(
+                re.search(r'\d+\.\d+\.\d+\.\d+', last_line)
+            )
+        else:
+            metrics['destination_reached'] = False
+
         return metrics
     
     def _log_to_csv(self, result: TestResult):
-        """Log result to CSV."""
+        """Log result to CSV. Skip hop_details (logged via hop_count)."""
         for metric_name, metric_value in result.metrics.items():
+            if metric_name == "hop_details":
+                continue
             self.csv_handler.write_result(
                 timestamp=result.timestamp,
                 test_name=result.test_name,
