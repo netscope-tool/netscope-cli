@@ -133,6 +133,9 @@ def format_test_result(result: TestResult, console: Console) -> None:
         console.print()
         console.print(Panel(interpretation, title="💡 What this means", border_style="dim"))
 
+    # Live status: done in X.Xs
+    console.print(f"\n[dim]Done in {result.duration:.1f}s.[/dim]")
+
 
 def get_interpretation(result: TestResult) -> str:
     """

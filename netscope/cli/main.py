@@ -14,7 +14,7 @@ from questionary import Choice
 import typer
 from rich.console import Console
 from rich.live import Live
-from rich.progress import Progress, SpinnerColumn, TextColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TaskProgressColumn
 from rich.spinner import Spinner
 
 from netscope.cli.formatters import (
@@ -30,7 +30,7 @@ from netscope.core.detector import SystemDetector
 from netscope.core.executor import TestExecutor
 from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
-from netscope.modules.ports import PortScanTest
+from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortScanTest
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
 
@@ -209,13 +209,23 @@ def _run_interactive(
                     ],
                 ).ask()
                 preset = preset_choice or "top20"
+                total_ports = len(PORT_PRESET_TOP100 if preset == "top100" else PORT_PRESET_TOP20)
                 test = PortScanTest(executor, csv_handler)
-                _result_holder = []
-                def _run():
-                    _result_holder.append(test.run(target, preset=preset))
-                _t = threading.Thread(target=_run)
-                _t.start()
-                with Live(Spinner("dots", text="Scanning ports…"), console=console, refresh_per_second=8):
+                _result_holder: list = []
+                with Progress(
+                    TextColumn("[bold cyan]{task.description}[/bold cyan]"),
+                    BarColumn(bar_width=24),
+                    TaskProgressColumn(),
+                    console=console,
+                    transient=True,
+                ) as progress:
+                    task = progress.add_task("Scanning ports…", total=total_ports)
+                    def _run():
+                        def _cb(completed: int, _total: int) -> None:
+                            progress.update(task, completed=completed)
+                        _result_holder.append(test.run(target, preset=preset, progress_callback=_cb))
+                    _t = threading.Thread(target=_run)
+                    _t.start()
                     while _t.is_alive():
                         _t.join(timeout=0.05)
                 result = _result_holder[0]

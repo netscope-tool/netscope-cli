@@ -4,7 +4,7 @@ Port scan test: pure-Python TCP port scanner (no nmap required).
 
 import socket
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from netscope.modules.base import BaseTest, TestResult
 
@@ -32,19 +32,24 @@ def scan_ports(
     host: str,
     ports: List[int],
     timeout: float = 2.0,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> tuple[List[int], List[int]]:
     """
     Try TCP connect to each port on host. Returns (open_ports, closed_ports).
+    If progress_callback is set, it is called as (completed_count, total) after each port.
     """
     open_ports: List[int] = []
     closed_ports: List[int] = []
+    total = len(ports)
 
-    for port in ports:
+    for i, port in enumerate(ports):
         try:
             with socket.create_connection((host, port), timeout=timeout):
                 open_ports.append(port)
         except (socket.timeout, socket.error, OSError):
             closed_ports.append(port)
+        if progress_callback is not None:
+            progress_callback(i + 1, total)
 
     return open_ports, closed_ports
 
@@ -61,6 +66,7 @@ class PortScanTest(BaseTest):
         ports: Optional[List[int]] = None,
         timeout: float = DEFAULT_TIMEOUT,
         preset: str = DEFAULT_PRESET,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
     ) -> TestResult:
         """Run port scan on target. If ports is None, use preset ('top20' or 'top100')."""
         start_time = datetime.now()
@@ -68,7 +74,9 @@ class PortScanTest(BaseTest):
         if ports is None:
             ports = PORT_PRESET_TOP100 if preset == "top100" else PORT_PRESET_TOP20
 
-        open_ports, closed_ports = scan_ports(target, ports, timeout=timeout)
+        open_ports, closed_ports = scan_ports(
+            target, ports, timeout=timeout, progress_callback=progress_callback
+        )
         duration = (datetime.now() - start_time).total_seconds()
 
         total = len(ports)
