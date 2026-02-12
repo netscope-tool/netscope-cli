@@ -229,6 +229,7 @@ def _default(
         False,
         "--version",
         "-V",
+        "--v",
         help="Show version and exit",
     ),
 ):
