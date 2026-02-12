@@ -1,0 +1,5 @@
+timestamp,test_name,target,metric,value,status,details
+2026-02-12T21:26:12.318975,Ping Test,google.com,packet_loss,0,success,Host google.com is reachable. Average latency: 113.983ms
+2026-02-12T21:26:12.318975,Ping Test,google.com,avg_latency,113.983,success,Host google.com is reachable. Average latency: 113.983ms
+2026-02-12T21:26:12.318975,Ping Test,google.com,max_latency,125.369,success,Host google.com is reachable. Average latency: 113.983ms
+2026-02-12T21:26:12.318975,Ping Test,google.com,packets_received,4,success,Host google.com is reachable. Average latency: 113.983ms
