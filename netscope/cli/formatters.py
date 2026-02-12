@@ -102,6 +102,87 @@ def format_test_result(result: TestResult, console: Console) -> None:
         console.print("\n[bold cyan]Raw Output:[/bold cyan]")
         console.print(Panel(result.raw_output[:500], border_style="dim"))
 
+    # Interpretation panel (what this means)
+    interpretation = get_interpretation(result)
+    if interpretation:
+        console.print()
+        console.print(Panel(interpretation, title="💡 What this means", border_style="dim"))
+
+
+def get_interpretation(result: TestResult) -> str:
+    """
+    Generate a short, human-readable interpretation of the test result.
+    Returns empty string if no interpretation is available.
+    """
+    metrics = result.metrics or {}
+
+    if result.test_name == "Ping Test":
+        loss = metrics.get("packet_loss", 100)
+        latency = metrics.get("avg_latency") or 0
+        if result.status == "failure":
+            return (
+                "❌ Host unreachable or test failed. Check network connection, "
+                "verify the target IP/hostname, and ensure the host is not blocking ICMP."
+            )
+        if loss == 100:
+            return (
+                "❌ 100% packet loss — host did not respond. It may be down, "
+                "blocking ping (ICMP), or unreachable from your network."
+            )
+        if loss > 0:
+            return (
+                f"⚠️ Unstable connection — {loss}% packet loss. Some packets did not return; "
+                "this can cause lag or failed requests. Try running again or use traceroute to locate the issue."
+            )
+        if latency < 20:
+            return "✅ Excellent connection — host is reachable with very low latency."
+        if latency < 50:
+            return "✅ Good connection — latency is normal for most applications."
+        if latency < 100:
+            return "⚠️ Fair connection — you may notice some delay in real-time apps."
+        return (
+            f"⚠️ High latency ({latency:.0f}ms) — consider using traceroute to find where the delay occurs."
+        )
+
+    if result.test_name == "Traceroute Test":
+        if result.status == "failure":
+            return (
+                "❌ Traceroute failed. The target or an intermediate router may be unreachable "
+                "or not responding to traceroute probes."
+            )
+        hop_count = metrics.get("hop_count", 0)
+        reached = metrics.get("destination_reached", False)
+        if reached and hop_count:
+            return (
+                f"✅ Path to target has {hop_count} hop(s) and the destination responded. "
+                "High latency at a specific hop indicates a bottleneck there."
+            )
+        if hop_count:
+            return (
+                f"⚠️ Path shows {hop_count} hop(s) but the final destination may not have responded. "
+                "Timeouts near the end often mean the target or a firewall is not replying to probes."
+            )
+        return "No hops were recorded; the route may be blocked or the target unreachable."
+
+    if result.test_name == "DNS Lookup":
+        if result.status == "failure":
+            return (
+                "❌ DNS lookup failed. Check hostname spelling, DNS server, and network connectivity."
+            )
+        resolved = metrics.get("resolved", False)
+        ip_count = metrics.get("ip_count", 0)
+        if resolved and ip_count:
+            return (
+                f"✅ Hostname resolved to {ip_count} address(es). "
+                "You can now ping or traceroute those IPs to test connectivity."
+            )
+        return (
+            "⚠️ No IP addresses returned. The hostname may be wrong, the domain may not exist, "
+            "or there may be a DNS server or network issue."
+        )
+
+    return ""
+
 
 def format_quick_check_summary(
     results: Sequence[TestResult],
@@ -143,6 +224,29 @@ def format_quick_check_summary(
 
     console.print()
     console.print(table)
+
+
+def get_error_guidance(exception: Exception, test_name: str = "", target: str = "") -> list[str]:
+    """
+    Return actionable suggestions for common test failures.
+    Used to display a "What to try" panel after an error.
+    """
+    msg = str(exception).lower()
+    lines: list[str] = []
+    if "timeout" in msg or "timed out" in msg:
+        lines.append("• Host may be down, blocking probes, or unreachable.")
+        lines.append("• Check your internet connection and the target IP/hostname.")
+        if target:
+            lines.append(f"• Try: [cyan]netscope traceroute {target}[/cyan] to see where it fails.")
+    elif "name" in msg or "resolve" in msg or "dns" in msg:
+        lines.append("• Check that the hostname is spelled correctly.")
+        lines.append("• Try: [cyan]netscope dns <hostname>[/cyan] to test DNS separately.")
+    elif "permission" in msg or "denied" in msg:
+        lines.append("• Some tests require elevated permissions on this system.")
+    else:
+        lines.append("• Verify the target IP or hostname is correct.")
+        lines.append("• Run with [cyan]-v[/cyan] for detailed logs.")
+    return lines
 
 
 def iter_results(results: TestResult | Iterable[TestResult]) -> Iterable[TestResult]:

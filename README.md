@@ -103,6 +103,28 @@ netscope ping 8.8.8.8 --format json
 netscope quick-check example.com --format json
 ```
 
+### Help and learning
+
+```bash
+netscope --version          # or -V
+netscope explain ping       # what the test does and how to interpret results
+netscope explain traceroute
+netscope glossary           # list networking terms
+netscope glossary latency   # definition of a term
+```
+
+### Optional config file
+
+You can set defaults in **`~/.netscope.yaml`** or **`.netscope.yaml`** in the current directory (optional; requires PyYAML):
+
+```yaml
+output_dir: ./my-output
+verbose: false
+timeout: 30
+```
+
+CLI options (e.g. `-o`, `-v`) override these values.
+
 ## Quick Start
 
 1. Run `netscope`

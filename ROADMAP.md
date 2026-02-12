@@ -41,6 +41,68 @@ Small, high-impact improvements to the current MVP without new phases.
 
 ---
 
+## Phase 1.5: User experience & education (before Phase 2)
+
+**Goal:** Make NetScope the friendly network tool that teaches while it works. Do this before Phase 2.
+
+### Help & education (implemented)
+
+| Item | Description | Status |
+|------|-------------|--------|
+| **`netscope explain <test>`** | Shows what the test does, when to use it, how to interpret results, related tests. Topics: `ping`, `traceroute`, `dns`, `ports`, `quick-check`. | ✅ Done |
+| **Result interpretation** | After each test, a "💡 What this means" panel with actionable interpretation (e.g. "✅ Excellent connection", "⚠️ High latency — try traceroute"). | ✅ Done |
+
+### Help & education (planned)
+
+| Item | Description | Effort |
+|------|-------------|--------|
+| **Glossary** | `netscope glossary` [term] — explain latency, packet loss, TTL, hops, DNS, ports. | S |
+| **In-menu tooltips** | Short description next to each menu option (e.g. "Ping — check reachability and latency"). | S |
+| **Troubleshooting wizard** | `netscope troubleshoot` — ask "What's wrong?" (website down, slow, etc.) and run suggested tests step by step. | M |
+| **Context-sensitive help** | e.g. "?" at target prompt shows examples and help. | S |
+| **`netscope examples`** | Common scenarios: "Check if website is down", "Find slow hops". | S |
+
+### UX enhancements (planned)
+
+| Item | Description | Effort |
+|------|-------------|--------|
+| **Better error messages** | Replace generic "Test failed" with possible causes and "What to try" (e.g. run traceroute, check hostname). | S |
+| **First-run experience** | Welcome message, optional "Set output directory? Configure defaults?". | S |
+| **`netscope history`** | Show last N runs with status (e.g. last 10). | S |
+| **Smart target shortcuts** | Accept "localhost", "gateway", "dns" as targets where possible. | S |
+| **Verbose explain** | With `-v`, briefly explain what each command does before running. | XS |
+
+### Reporting & scoring (Phase 3 add-ons)
+
+| Item | Description | Effort |
+|------|-------------|--------|
+| **Health score** | 0–100 score from Quick Network Check results. | S |
+| **Recommendations** | Auto-generated action items in HTML/report (e.g. "High latency at hop 7 — contact ISP"). | M |
+| **Executive summary** | One-page HTML with pass/fail and top recommendations. | M |
+
+### Documentation structure (planned)
+
+```
+docs/
+├── getting-started.md
+├── user-guide/
+│   ├── understanding-tests.md
+│   ├── interpreting-results.md
+│   ├── troubleshooting-guide.md
+│   └── examples.md
+├── reference/
+│   ├── cli-reference.md
+│   ├── config-file.md
+│   └── glossary.md
+└── advanced/
+    ├── automation.md
+    └── plugin-development.md
+```
+
+**Phase 1.5 priority (remaining):** Better error messages → Glossary → Troubleshooting wizard → First-run / history.
+
+---
+
 ## Phase 2: Enhanced testing (next)
 
 ### Port scanning & service discovery
@@ -169,10 +231,11 @@ Small, high-impact improvements to the current MVP without new phases.
 
 ## Summary: what to do next
 
-1. **Run the app** – Confirm `netscope` works after the `output_dir` fix.
-2. **Phase 1 enhancements** – Add config file default for `output_dir`, then non-interactive subcommands and Quick Check summary.
-3. **Phase 2** – Basic port scanner + progress bars, then nmap and ARP.
-4. **Phase 3** – Single-run HTML report, then Jupyter and charts if needed.
-5. **Phase 4–5** – Async, DB/diff, then tests + CI and PyPI/Docker/Homebrew.
+1. **Run the app** – Confirm `netscope` works; try `netscope explain ping` and run a test to see interpretation panels.
+2. **Phase 1 (remaining)** – Config file, `--version`, improved parsing (min/max ping, hop table), `model_dump()`, minimal tests.
+3. **Phase 1.5 (remaining)** – Better error messages, glossary, troubleshooting wizard, first-run experience, `netscope history`.
+4. **Phase 2** – Basic port scanner + progress bars, then nmap and ARP.
+5. **Phase 3** – Single-run HTML report (with health score/recommendations), then Jupyter and charts if needed.
+6. **Phase 4–5** – Async, DB/diff, then tests + CI and PyPI/Docker/Homebrew.
 
 Effort key: **S** = small (half day–1 day), **M** = medium (1–3 days), **L** = larger (3+ days).

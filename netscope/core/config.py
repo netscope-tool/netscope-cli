@@ -4,9 +4,48 @@ Configuration management.
 
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 import json
 from pydantic import BaseModel, Field, field_validator
+
+
+def load_config_file() -> dict[str, Any]:
+    """
+    Load optional config from ~/.netscope.yaml or ./.netscope.yaml.
+    Returns dict with output_dir (str or Path), verbose (bool), timeout (int).
+    Missing keys are omitted so callers can use their own defaults.
+    """
+    result: dict[str, Any] = {}
+    candidates = [
+        Path.home() / ".netscope.yaml",
+        Path.cwd() / ".netscope.yaml",
+    ]
+    raw: dict[str, Any] = {}
+    for path in candidates:
+        if path.exists():
+            try:
+                try:
+                    import yaml
+                except ImportError:
+                    break
+                with open(path, "r", encoding="utf-8") as f:
+                    raw = yaml.safe_load(f) or {}
+                break
+            except Exception:
+                raw = {}
+                break
+    if not raw:
+        return result
+    if "output_dir" in raw:
+        result["output_dir"] = Path(raw["output_dir"]).expanduser().resolve()
+    if "verbose" in raw:
+        result["verbose"] = bool(raw["verbose"])
+    if "timeout" in raw:
+        try:
+            result["timeout"] = int(raw["timeout"])
+        except (TypeError, ValueError):
+            pass
+    return result
 
 
 class AppConfig(BaseModel):
@@ -32,7 +71,8 @@ class AppConfig(BaseModel):
         return Path("output")
     
     def model_post_init(self, __context):
-        """Ensure output directory exists after initialization."""
+        """Ensure output directory exists and is resolved to absolute path."""
+        self.output_dir = self.output_dir.resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
     def create_test_run_dir(self, test_name: str) -> Path:

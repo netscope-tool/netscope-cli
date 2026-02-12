@@ -15,6 +15,7 @@ from rich.console import Console
 from netscope.cli.formatters import (
     format_quick_check_summary,
     format_test_result,
+    get_error_guidance,
     iter_results,
     print_header,
     print_system_info,
@@ -39,10 +40,17 @@ console = Console()
 def _init_context(output_dir: Optional[Path], verbose: bool):
     """
     Initialize shared objects: config, logger, system info, detector and executor factory.
+    Uses optional config file (~/.netscope.yaml or ./.netscope.yaml) for defaults when CLI does not set values.
     """
+    from netscope.core.config import load_config_file
+    file_cfg = load_config_file()
+    resolved_output = output_dir if output_dir is not None else file_cfg.get("output_dir") or Path("output")
+    if isinstance(resolved_output, str):
+        resolved_output = Path(resolved_output)
+    resolved_verbose = verbose or file_cfg.get("verbose", False)
     config = AppConfig(
-        output_dir=output_dir if output_dir is not None else Path("output"),
-        verbose=verbose,
+        output_dir=resolved_output,
+        verbose=resolved_verbose,
     )
 
     logger = setup_logging(config.output_dir, verbose)
@@ -70,7 +78,7 @@ def _output_results_json(results: Iterable, pretty: bool = True) -> None:
     Print one or more TestResult objects as JSON to the console.
     """
     serializable = [
-        r.model_dump(mode="json") if hasattr(r, "model_dump") else r.dict()
+        r.model_dump(mode="json")
         for r in iter_results(results)
     ]
     if len(serializable) == 1:
@@ -121,7 +129,7 @@ def _run_interactive(
 
         if choice == "Exit":
             console.print("\n[bold cyan]👋 Thank you for using NetScope![/bold cyan]")
-            logger.info("NetDiag exited normally")
+            logger.info("NetScope exited normally")
             break
 
         # Get target (with subtle guide)
@@ -181,7 +189,7 @@ def _run_interactive(
                     "test_type": choice,
                     "target": target,
                     "status": primary_result.status,
-                    "system_info": system_info.dict(),
+                    "system_info": system_info.model_dump(mode="json"),
                 },
             )
 
@@ -190,11 +198,15 @@ def _run_interactive(
         except Exception as e:  # pragma: no cover - defensive
             logger.error(f"Test failed: {e}")
             console.print(f"\n[bold red]❌ Test failed: {e}[/bold red]")
+            guidance = get_error_guidance(e, choice, target)
+            if guidance:
+                from rich.panel import Panel
+                console.print(Panel("\n".join(guidance), title="What to try", border_style="dim"))
 
         # Ask if user wants to continue
         if not questionary.confirm("\nRun another test?", default=True).ask():
             console.print("\n[bold cyan]👋 Thank you for using NetScope![/bold cyan]")
-            logger.info("NetDiag exited normally")
+            logger.info("NetScope exited normally")
             break
 
 
@@ -213,11 +225,21 @@ def _default(
         "-v",
         help="Enable verbose output",
     ),
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        help="Show version and exit",
+    ),
 ):
     """
-    NetDiag - Network Diagnostics & Reporting Tool.
+    NetScope - Network Diagnostics & Reporting Tool.
     Run with no command for the interactive menu, or use a subcommand for direct tests.
     """
+    if version:
+        from netscope import __version__
+        console.print(f"netscope {__version__}")
+        raise typer.Exit(0)
     if ctx.invoked_subcommand is None:
         _run_interactive(output_dir, verbose)
 
@@ -238,9 +260,70 @@ def main_cmd(
     ),
 ):
     """
-    Interactive menu (same as running netdiag with no command).
+    Interactive menu (same as running netscope with no command).
     """
     _run_interactive(output_dir, verbose)
+
+
+@app.command()
+def explain(
+    test_name: str = typer.Argument(
+        ...,
+        help="Test to explain: ping, traceroute, dns, ports, quick-check",
+    ),
+):
+    """
+    Explain what a test does, when to use it, how to interpret results, and related tests.
+    """
+    from netscope.cli.explain_content import get_explain_content
+    from rich.panel import Panel
+
+    pair = get_explain_content(test_name)
+    if pair is None:
+        console.print(
+            f"[red]Unknown test: {test_name}[/red]\n"
+            "[dim]Valid options: ping, traceroute, dns, ports, quick-check[/dim]"
+        )
+        raise typer.Exit(1)
+    title, content = pair
+    console.print()
+    console.print(
+        Panel(
+            content.strip(),
+            title=f"📚 {title}",
+            border_style="cyan",
+            expand=False,
+        )
+    )
+
+
+@app.command()
+def glossary(
+    term: Optional[str] = typer.Argument(
+        None,
+        help="Term to look up (e.g. latency, TTL, DNS). Omit to list all terms.",
+    ),
+):
+    """
+    Explain networking terms. Run with no argument to list all terms.
+    """
+    from netscope.cli.glossary_content import get_glossary_entry, list_glossary_terms
+    from rich.panel import Panel
+
+    if term is None or term.strip() == "":
+        terms = list_glossary_terms()
+        console.print("[bold cyan]📖 Glossary terms[/bold cyan]\n")
+        console.print("[dim]Run: netscope glossary <term> for definition[/dim]\n")
+        console.print(", ".join(terms))
+        return
+    entry = get_glossary_entry(term)
+    if entry is None:
+        console.print(f"[red]Unknown term: {term}[/red]")
+        console.print("[dim]Run [cyan]netscope glossary[/cyan] to list terms.[/dim]")
+        raise typer.Exit(1)
+    display_name, definition = entry
+    console.print()
+    console.print(Panel(definition.strip(), title=f"📖 {display_name}", border_style="cyan", expand=False))
 
 
 def show_main_menu() -> str:
@@ -305,7 +388,7 @@ def ping(
             "test_type": "Ping Test",
             "target": target,
             "status": result.status,
-            "system_info": system_info.dict(),
+            "system_info": system_info.model_dump(mode="json"),
         },
     )
 
@@ -355,7 +438,7 @@ def traceroute(
             "test_type": "Traceroute Test",
             "target": target,
             "status": result.status,
-            "system_info": system_info.dict(),
+            "system_info": system_info.model_dump(mode="json"),
         },
     )
 
@@ -405,7 +488,7 @@ def dns(
             "test_type": "DNS Lookup",
             "target": target,
             "status": result.status,
-            "system_info": system_info.dict(),
+            "system_info": system_info.model_dump(mode="json"),
         },
     )
 
@@ -457,7 +540,7 @@ def quick_check(
             "test_type": "Quick Network Check",
             "target": target,
             "status": primary.status,
-            "system_info": system_info.dict(),
+            "system_info": system_info.model_dump(mode="json"),
         },
     )
 
