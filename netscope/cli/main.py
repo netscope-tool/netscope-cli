@@ -974,6 +974,29 @@ def ping_sweep(
     )
 
 
+@app.command(name="report")
+def report_cmd(
+    run_dir: Path = typer.Argument(..., help="Path to a single NetScope run directory"),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        "--output-file",
+        "-o",
+        help="Output HTML file (default: report.html inside the run directory)",
+    ),
+):
+    """
+    Generate an HTML report for a single run directory.
+    """
+    from netscope.report.html_report import generate_html_report
+
+    if not run_dir.exists() or not run_dir.is_dir():
+        console.print(f"[red]Run directory not found:[/red] {run_dir}")
+        raise typer.Exit(1)
+
+    html_path = generate_html_report(run_dir, output_file)
+    console.print(f"\n[bold green]✓ HTML report generated:[/bold green] {html_path}\n")
+
+
 @app.command(name="quick-check")
 def quick_check(
     target: str = typer.Argument(..., help="Target IP or hostname (shortcuts: localhost, gateway, dns)"),
