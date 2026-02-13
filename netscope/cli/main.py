@@ -148,23 +148,47 @@ def _run_interactive(
             logger.info("NetScope exited normally")
             break
 
-        # Get target (with subtle guide)
-        console.print(
-            "[dim]  Examples: 8.8.8.8, 1.1.1.1, google.com, example.com[/dim]"
-        )
-        console.print(
-            "[dim]  Shortcuts: localhost, gateway, dns[/dim]"
-        )
-        target = questionary.text(
-            "Enter target IP/hostname:",
-            validate=lambda x: len(x) > 0,
-        ).ask()
+        if choice == "Dashboard":
+            # Launch the TUI dashboard (temporary session)
+            from netscope.tui.dashboard import NetworkDashboard
 
-        if not target:
+            console.print("\n[bold cyan]Launching NetScope Dashboard… (press Ctrl+C to exit)[/bold cyan]\n")
+            dash = NetworkDashboard(console=console)
+            try:
+                dash.run(duration=0)  # 0 = run until interrupted
+            except KeyboardInterrupt:
+                pass
             continue
 
-        # Resolve smart shortcuts
-        target = _resolve_target(target)
+        # Determine target / input per test
+        target: Optional[str] = None
+
+        if choice in {"Ping Test", "Traceroute Test", "DNS Lookup", "Port Scan", "Nmap Scan", "Quick Network Check"}:
+            console.print(
+                "[dim]  Examples: 8.8.8.8, 1.1.1.1, google.com, example.com[/dim]"
+            )
+            console.print(
+                "[dim]  Shortcuts: localhost, gateway, dns[/dim]"
+            )
+            target_input = questionary.text(
+                "Enter target IP/hostname:",
+                validate=lambda x: len(x) > 0,
+            ).ask()
+            if not target_input:
+                continue
+            target = _resolve_target(target_input)
+        elif choice == "ARP Scan":
+            # Local-only scan; no target needed
+            target = "local"
+        elif choice == "Ping Sweep":
+            console.print("\n[dim]Enter a CIDR range (e.g., 192.168.1.0/24). Maximum /24 (256 hosts).[/dim]\n")
+            cidr = questionary.text(
+                "Enter CIDR range:",
+                validate=lambda x: len(x) > 0 and "/" in x,
+            ).ask()
+            if not cidr:
+                continue
+            target = cidr  # reuse as 'target' label for consistency
 
         # Create test run directory and helpers
         test_run_dir = config.create_test_run_dir(choice.lower().replace(" ", "_"))
@@ -174,7 +198,10 @@ def _run_interactive(
         executor = TestExecutor(system_info, logger)
 
         # Execute test based on choice
-        console.print(f"\n[bold cyan]Running {choice} on {target}...[/bold cyan]\n")
+        if target is not None and choice not in {"ARP Scan", "Ping Sweep"}:
+            console.print(f"\n[bold cyan]Running {choice} on {target}...[/bold cyan]\n")
+        else:
+            console.print(f"\n[bold cyan]Running {choice}...[/bold cyan]\n")
 
         try:
             if choice == "Ping Test":
@@ -274,13 +301,8 @@ def _run_interactive(
                 result = _result_holder[0]
                 results = [result]
             elif choice == "Ping Sweep":
-                console.print("\n[dim]Enter a CIDR range (e.g., 192.168.1.0/24). Maximum /24 (256 hosts).[/dim]\n")
-                cidr = questionary.text(
-                    "Enter CIDR range:",
-                    validate=lambda x: len(x) > 0 and "/" in x,
-                ).ask()
-                if not cidr:
-                    continue
+                # target already contains the CIDR range from the prompt above
+                cidr = target
                 test = PingSweepTest(executor, csv_handler)
                 _result_holder = []
 
@@ -591,6 +613,7 @@ def show_main_menu() -> str:
         Choice("Nmap Scan — Detailed port & service scan (requires nmap)", value="Nmap Scan"),
         Choice("ARP Scan — Discover devices on local network", value="ARP Scan"),
         Choice("Ping Sweep — Find alive hosts in a network range", value="Ping Sweep"),
+        Choice("Dashboard — Live network status view", value="Dashboard"),
         Choice("Exit", value="Exit"),
     ]
 

@@ -171,3 +171,15 @@
 2026-02-13 12:40:59 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: hop_count=8
 2026-02-13 12:40:59 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: destination_reached=True
 2026-02-13 12:41:48 | INFO     | netscope.cli.main:_run_interactive:355 | NetScope exited normally
+2026-02-13 14:01:01 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 14:01:01 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 14:01:27 | INFO     | netscope.cli.main:_run_interactive:171 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_140127_arp_scan
+2026-02-13 14:01:27 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_140127_arp_scan/results.csv
+2026-02-13 14:01:27 | INFO     | netscope.core.executor:run_command:54 | Executing command: arp -a
+2026-02-13 14:01:34 | INFO     | netscope.core.executor:run_command:75 | Command completed: arp -a (return code: 0, duration: 7.32s)
+2026-02-13 14:01:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=D4:13:F8:1B:5F:C0
+2026-02-13 14:01:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=86:44:F0:14:14:9E
+2026-02-13 14:01:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=38:F9:D3:66:EE:76
+2026-02-13 14:01:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=3A:67:CC:58:55:40
+2026-02-13 14:01:34 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FF:FF:FF:FF:FF:FF
+2026-02-13 14:11:46 | INFO     | netscope.cli.main:_run_interactive:355 | NetScope exited normally
