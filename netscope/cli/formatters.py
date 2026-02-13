@@ -99,7 +99,7 @@ def format_test_result(result: TestResult, console: Console) -> None:
         metrics_table.add_column("Value", style="white")
 
         for key, value in result.metrics.items():
-            if key == "hop_details":
+            if key == "hop_details" or key == "devices" or key == "alive_hosts" or key == "services":
                 continue
             if key == "open_ports" and isinstance(value, list):
                 metrics_table.add_row("Open Ports", ", ".join(str(p) for p in value) if value else "None")
@@ -127,6 +127,38 @@ def format_test_result(result: TestResult, console: Console) -> None:
             hops_table.add_row("…", f"+{len(hop_details) - 20} more", "")
         console.print()
         console.print(hops_table)
+
+    # Devices table for ARP scan
+    devices = (result.metrics or {}).get("devices")
+    if isinstance(devices, list) and len(devices) > 0:
+        devices_table = Table(title="Devices", show_header=True, box=None, padding=(0, 2))
+        devices_table.add_column("IP Address", style="cyan")
+        devices_table.add_column("MAC Address", style="white")
+        devices_table.add_column("Interface", style="white")
+        devices_table.add_column("Vendor", style="dim")
+        for d in devices[:50]:  # cap at 50 rows
+            devices_table.add_row(
+                d.get("ip", "—"),
+                d.get("mac", "—"),
+                d.get("interface", "—") or "—",
+                d.get("vendor", "Unknown") or "Unknown",
+            )
+        if len(devices) > 50:
+            devices_table.add_row("…", f"+{len(devices) - 50} more", "", "")
+        console.print()
+        console.print(devices_table)
+
+    # Alive hosts table for ping sweep
+    alive_hosts = (result.metrics or {}).get("alive_hosts")
+    if isinstance(alive_hosts, list) and len(alive_hosts) > 0:
+        hosts_table = Table(title="Alive Hosts", show_header=True, box=None, padding=(0, 2))
+        hosts_table.add_column("IP Address", style="cyan")
+        for host in alive_hosts[:50]:  # cap at 50 rows
+            hosts_table.add_row(str(host))
+        if len(alive_hosts) > 50:
+            hosts_table.add_row(f"+{len(alive_hosts) - 50} more")
+        console.print()
+        console.print(hosts_table)
 
     # Print raw output if present
     if result.raw_output:
@@ -243,6 +275,31 @@ def get_interpretation(result: TestResult) -> str:
                 "Common open ports (e.g. 22, 80, 443) often indicate SSH, HTTP, or HTTPS services."
             )
         return "In plain terms: no ports were scanned (empty port list)."
+
+    if result.test_name == "ARP Scan":
+        device_count = metrics.get("device_count", 0)
+        if device_count == 0:
+            return (
+                "In plain terms: no devices were found in the ARP table. "
+                "This might mean the network is quiet, or ARP cache was recently cleared."
+            )
+        return (
+            f"In plain terms: {device_count} device(s) were found in the local ARP table. "
+            "These are devices your computer has recently communicated with on the local network."
+        )
+
+    if result.test_name == "Ping Sweep":
+        alive_count = metrics.get("alive_count", 0)
+        total = metrics.get("total_addresses", 0)
+        if alive_count == 0:
+            return (
+                "In plain terms: no hosts responded to ping in the scanned range. "
+                "They may be down, blocking ICMP, or unreachable."
+            )
+        return (
+            f"In plain terms: {alive_count} of {total} host(s) in the range responded to ping. "
+            "These hosts are up and accepting ICMP echo requests."
+        )
 
     return ""
 

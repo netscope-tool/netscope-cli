@@ -33,6 +33,8 @@ from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
 from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortScanTest
 from netscope.modules.nmap_scan import NmapScanTest
+from netscope.modules.arp_scan import ARPScanTest
+from netscope.modules.ping_sweep import PingSweepTest
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
 
@@ -252,6 +254,42 @@ def _run_interactive(
                 _t = threading.Thread(target=_run)
                 _t.start()
                 with Live(Spinner("dots", text="Running nmap scan…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
+                results = [result]
+            elif choice == "ARP Scan":
+                console.print("\n[dim]Scanning local ARP table for devices...[/dim]\n")
+                test = ARPScanTest(executor, csv_handler)
+                _result_holder = []
+
+                def _run():
+                    _result_holder.append(test.run("local"))
+
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Scanning ARP table…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
+                results = [result]
+            elif choice == "Ping Sweep":
+                console.print("\n[dim]Enter a CIDR range (e.g., 192.168.1.0/24). Maximum /24 (256 hosts).[/dim]\n")
+                cidr = questionary.text(
+                    "Enter CIDR range:",
+                    validate=lambda x: len(x) > 0 and "/" in x,
+                ).ask()
+                if not cidr:
+                    continue
+                test = PingSweepTest(executor, csv_handler)
+                _result_holder = []
+
+                def _run():
+                    _result_holder.append(test.run(cidr))
+
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Ping sweeping…"), console=console, refresh_per_second=8):
                     while _t.is_alive():
                         _t.join(timeout=0.05)
                 result = _result_holder[0]
@@ -550,6 +588,8 @@ def show_main_menu() -> str:
         Choice("DNS Lookup — Resolve hostname to IP address(es)", value="DNS Lookup"),
         Choice("Port Scan — Check which TCP ports are open", value="Port Scan"),
         Choice("Nmap Scan — Detailed port & service scan (requires nmap)", value="Nmap Scan"),
+        Choice("ARP Scan — Discover devices on local network", value="ARP Scan"),
+        Choice("Ping Sweep — Find alive hosts in a network range", value="Ping Sweep"),
         Choice("Exit", value="Exit"),
     ]
 
@@ -817,6 +857,117 @@ def nmap_scan(
         {
             "test_type": "Nmap Scan",
             "target": target,
+            "status": result.status,
+            "system_info": system_info.model_dump(mode="json"),
+        },
+    )
+
+
+@app.command(name="arp-scan")
+def arp_scan(
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory for results",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output",
+    ),
+    output_format: str = typer.Option(
+        "rich",
+        "--format",
+        "-f",
+        help="Output format: 'rich' (default) or 'json'",
+    ),
+):
+    """
+    Scan local ARP table to discover devices on the network.
+    """
+    config, logger, _detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("arp_scan")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+
+    console.print(f"\n[bold cyan]Running ARP Scan...[/bold cyan]\n")
+    test = ARPScanTest(executor, csv_handler)
+    result = test.run("local")
+
+    if output_format == "json":
+        _output_results_json(result)
+    else:
+        format_test_result(result, console)
+
+    config.save_metadata(
+        test_run_dir,
+        {
+            "test_type": "ARP Scan",
+            "target": "local",
+            "status": result.status,
+            "system_info": system_info.model_dump(mode="json"),
+        },
+    )
+
+
+@app.command(name="ping-sweep")
+def ping_sweep(
+    cidr: str = typer.Argument(..., help="CIDR range (e.g., 192.168.1.0/24). Maximum /24 (256 hosts)."),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory for results",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output",
+    ),
+    output_format: str = typer.Option(
+        "rich",
+        "--format",
+        "-f",
+        help="Output format: 'rich' (default) or 'json'",
+    ),
+    max_workers: int = typer.Option(
+        50,
+        "--workers",
+        "-w",
+        help="Maximum concurrent ping threads",
+    ),
+    timeout: float = typer.Option(
+        1.0,
+        "--timeout",
+        "-t",
+        help="Timeout per ping in seconds",
+    ),
+):
+    """
+    Ping sweep a CIDR range to find alive hosts.
+    """
+    config, logger, _detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("ping_sweep")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+
+    console.print(f"\n[bold cyan]Running Ping Sweep on {cidr}...[/bold cyan]\n")
+    test = PingSweepTest(executor, csv_handler)
+    result = test.run(cidr, max_workers=max_workers, timeout=timeout)
+
+    if output_format == "json":
+        _output_results_json(result)
+    else:
+        format_test_result(result, console)
+
+    config.save_metadata(
+        test_run_dir,
+        {
+            "test_type": "Ping Sweep",
+            "target": cidr,
             "status": result.status,
             "system_info": system_info.model_dump(mode="json"),
         },
