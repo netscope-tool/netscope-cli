@@ -1,5 +1,9 @@
 """
 Enhanced ARP scan: discover devices on local network with comprehensive vendor identification.
+
+Vendor names are resolved from the first 3 bytes of the MAC (OUI) using a built-in
+database derived from publicly known IEEE OUI assignments. Optional OS/device type
+hints can be added per host using nmap -O when nmap is installed.
 """
 
 import platform
@@ -10,6 +14,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from netscope.modules.base import BaseTest, TestResult
+from netscope.modules.nmap_scan import has_nmap, run_nmap_os_scan
 from netscope.utils.mac_vendor import lookup_vendor, get_device_info, normalize_mac
 
 
@@ -124,11 +129,16 @@ def parse_arp_output_enhanced(output: str, os_type: str) -> List[Dict[str, Any]]
 
 
 class ARPScanTestEnhanced(BaseTest):
-    """Enhanced ARP table scan with comprehensive device identification."""
+    """Enhanced ARP table scan with comprehensive device identification (OUI vendor + optional nmap OS)."""
     
-    def run(self, target: str = "local") -> TestResult:
+    def run(
+        self,
+        target: str = "local",
+        with_os_detection: bool = False,
+    ) -> TestResult:
         """
         Run enhanced ARP scan. Target is ignored (always scans local ARP table).
+        If with_os_detection is True and nmap is available, runs nmap -O on each device (up to 10) to add OS/device hint.
         """
         start_time = datetime.now()
         os_type = platform.system()
@@ -143,8 +153,24 @@ class ARPScanTestEnhanced(BaseTest):
         # Execute command
         result = self.executor.run_command(command)
         
-        # Parse output with enhanced vendor lookup
+        # Parse output with enhanced vendor lookup (OUI from built-in database)
         devices = parse_arp_output_enhanced(result.stdout, os_type) if result.success else []
+        
+        # Optional: enrich with nmap OS detection (limit to 10 hosts to keep run time reasonable)
+        if with_os_detection and has_nmap() and devices:
+            max_os_scan = 10
+            for i, device in enumerate(devices):
+                if i >= max_os_scan:
+                    break
+                ip = device.get("ip")
+                if not ip or ip.startswith("127."):
+                    continue
+                os_guess = run_nmap_os_scan(ip, timeout=25)
+                if os_guess:
+                    device["os_guess"] = os_guess
+                    # If we had only "Unknown" or generic type, prefer nmap's hint for display
+                    if device.get("device_type") == "Unknown" or not device.get("device_type"):
+                        device["device_type"] = os_guess
         
         # Categorize devices by type
         device_types = {}

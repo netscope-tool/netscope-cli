@@ -13,6 +13,7 @@ from rich.align import Align
 
 from netscope.modules.base import TestResult
 from netscope.core.detector import SystemInfo
+from netscope.utils.network_info import NetworkInfo, get_network_info
 
 # Cache for network status so we don't re-fetch every time we print the widget
 _network_status_cache: dict | None = None
@@ -50,6 +51,36 @@ def print_system_info(system_info: SystemInfo) -> None:
     console.print()
     console.print(table)
     console.print()
+
+    # Network information (netmask, gateway, DNS, interface, provider/location)
+    try:
+        net_info = get_network_info()
+        net_table = Table(title="Network Information", show_header=False, box=None)
+        net_table.add_column("Property", style="cyan")
+        net_table.add_column("Value", style="white")
+        if net_info.interface:
+            net_table.add_row("Interface", net_info.interface)
+        if net_info.local_ip:
+            net_table.add_row("Local IP", net_info.local_ip)
+        if net_info.netmask:
+            net_table.add_row("Netmask", net_info.netmask)
+        if net_info.gateway_ip:
+            net_table.add_row("Gateway IP", net_info.gateway_ip)
+        if net_info.gateway_mac:
+            net_table.add_row("Gateway MAC", net_info.gateway_mac)
+        if net_info.dns_servers:
+            net_table.add_row("DNS", ", ".join(net_info.dns_servers[:3]))
+        if net_info.public_ip:
+            net_table.add_row("Public IP", net_info.public_ip)
+        if net_info.provider:
+            net_table.add_row("Provider", net_info.provider)
+        if net_info.location:
+            net_table.add_row("Location", net_info.location)
+        if net_table.row_count > 0:
+            console.print(net_table)
+            console.print()
+    except Exception:
+        pass
 
 
 def _status_icon_and_color(status: str) -> tuple[str, str]:
@@ -99,7 +130,7 @@ def format_test_result(result: TestResult, console: Console) -> None:
         metrics_table.add_column("Value", style="white")
 
         for key, value in result.metrics.items():
-            if key == "hop_details" or key == "devices" or key == "alive_hosts" or key == "services":
+            if key in ("hop_details", "devices", "alive_hosts", "services") or key.startswith("server_"):
                 continue
             if key == "open_ports" and isinstance(value, list):
                 metrics_table.add_row("Open Ports", ", ".join(str(p) for p in value) if value else "None")
@@ -110,6 +141,24 @@ def format_test_result(result: TestResult, console: Console) -> None:
 
         if metrics_table.row_count > 0:
             console.print(metrics_table)
+
+    # Speedtest server info (clear, user-friendly)
+    if result.test_name == "bandwidth_test" and result.metrics:
+        m = result.metrics
+        sponsor = m.get("server_sponsor") or ""
+        name = m.get("server_name") or ""
+        latency = m.get("server_latency_ms") or m.get("latency_ms")
+        if sponsor or name:
+            server_line = f"Server: [cyan]{sponsor}[/cyan]"
+            if name:
+                server_line += f" ([dim]{name}[/dim])"
+            if latency is not None:
+                try:
+                    server_line += f"  —  Latency: [green]{float(latency):.1f} ms[/green]"
+                except (TypeError, ValueError):
+                    pass
+            console.print(Panel(server_line, title="Speedtest server", border_style="dim", padding=(0, 1)))
+            console.print()
 
     # Per-hop table for traceroute
     hop_details = (result.metrics or {}).get("hop_details")
@@ -128,7 +177,7 @@ def format_test_result(result: TestResult, console: Console) -> None:
         console.print()
         console.print(hops_table)
 
-    # Devices table for ARP scan
+    # Devices table for ARP scan (Vendor from OUI; Device Type from heuristic or nmap -O)
     devices = (result.metrics or {}).get("devices")
     if isinstance(devices, list) and len(devices) > 0:
         devices_table = Table(title="Devices", show_header=True, box=None, padding=(0, 2))
@@ -136,15 +185,18 @@ def format_test_result(result: TestResult, console: Console) -> None:
         devices_table.add_column("MAC Address", style="white")
         devices_table.add_column("Interface", style="white")
         devices_table.add_column("Vendor", style="dim")
+        devices_table.add_column("Device Type", style="dim")
         for d in devices[:50]:  # cap at 50 rows
+            dtype = d.get("os_guess") or d.get("device_type", "—") or "—"
             devices_table.add_row(
                 d.get("ip", "—"),
                 d.get("mac", "—"),
                 d.get("interface", "—") or "—",
                 d.get("vendor", "Unknown") or "Unknown",
+                str(dtype),
             )
         if len(devices) > 50:
-            devices_table.add_row("…", f"+{len(devices) - 50} more", "", "")
+            devices_table.add_row("…", f"+{len(devices) - 50} more", "", "", "")
         console.print()
         console.print(devices_table)
 

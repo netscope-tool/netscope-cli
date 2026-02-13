@@ -35,6 +35,7 @@ from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortSc
 from netscope.modules.nmap_scan import NmapScanTest
 from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
 from netscope.modules.ping_sweep import PingSweepTest
+from netscope.modules.bandwidth import BandwidthTest, list_speedtest_servers
 from netscope.parallel.executor import BatchTestRunner, ParallelTestConfig
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
@@ -962,6 +963,11 @@ def arp_scan(
         "-v",
         help="Enable verbose output",
     ),
+    with_os: bool = typer.Option(
+        False,
+        "--with-os",
+        help="Use nmap -O to detect OS/device type per host (slower, up to 10 hosts)",
+    ),
     output_format: str = typer.Option(
         "rich",
         "--format",
@@ -970,7 +976,7 @@ def arp_scan(
     ),
 ):
     """
-    Scan local ARP table to discover devices on the network.
+    Scan local ARP table to discover devices (vendor from OUI). Use --with-os to add nmap OS detection.
     """
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("arp_scan")
@@ -982,7 +988,7 @@ def arp_scan(
     _result_holder = []
 
     def _run() -> None:
-        _result_holder.append(test.run("local"))
+        _result_holder.append(test.run("local", with_os_detection=with_os))
 
     _t = threading.Thread(target=_run)
     _t.start()
@@ -1006,6 +1012,84 @@ def arp_scan(
         },
     )
 
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
+
+
+@app.command(name="speedtest")
+def speedtest(
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory for results",
+    ),
+    list_servers: bool = typer.Option(
+        False,
+        "--list",
+        "-l",
+        help="List available speedtest servers (ID, sponsor, location) then exit",
+    ),
+    server: Optional[str] = typer.Option(
+        None,
+        "--server",
+        "-s",
+        help="Use this server ID (from 'netscope speedtest --list'). Default: auto-select",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output",
+    ),
+):
+    """
+    Run a speedtest (download/upload). Use --list to choose a server by ID, then --server <id>.
+    """
+    if list_servers:
+        from rich.table import Table as RichTable
+        servers = list_speedtest_servers()
+        if not servers:
+            console.print("[yellow]speedtest-cli not found or failed. Install with: pip install speedtest-cli[/yellow]")
+            raise typer.Exit(1)
+        console.print("\n[bold cyan]Available speedtest servers (use --server ID)[/bold cyan]\n")
+        t = RichTable(show_header=True, header_style="bold")
+        t.add_column("ID", style="cyan")
+        t.add_column("Sponsor / Location", style="white")
+        for s in servers[:50]:
+            t.add_row(s["id"], s["label"])
+        console.print(t)
+        console.print("\n[dim]Example: netscope speedtest --server 1234[/dim]\n")
+        return
+
+    config, logger, _detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("speedtest")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+
+    target = server if server else "auto"
+    console.print(f"\n[bold cyan]Running Speedtest...[/bold cyan]")
+    if target != "auto":
+        console.print(f"[dim]Server ID: {target}[/dim]\n")
+    else:
+        console.print("[dim]Server: auto (closest)[/dim]\n")
+
+    test = BandwidthTest(executor, csv_handler, method="speedtest")
+    try:
+        result = test.run(target=target)
+    except Exception as e:
+        console.print(f"[red]Speedtest failed: {e}[/red]")
+        raise typer.Exit(1)
+
+    format_test_result(result, console)
+    config.save_metadata(
+        test_run_dir,
+        {
+            "test_type": "Speedtest",
+            "target": target,
+            "status": result.status,
+            "system_info": system_info.model_dump(mode="json"),
+        },
+    )
     console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 

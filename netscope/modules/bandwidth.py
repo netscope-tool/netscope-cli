@@ -1,19 +1,54 @@
 """
 Bandwidth testing module.
 Provides upload/download speed tests and network performance metrics.
+Speedtest uses speedtest-cli; optional server selection via list_servers().
 """
 
 from __future__ import annotations
 
+import re
 import time
+from datetime import datetime
 import socket
+import subprocess
 import threading
-from typing import Optional, Callable
+from typing import Optional, Callable, List, Dict, Any
 from dataclasses import dataclass
 
 from netscope.modules.base import BaseTest, TestResult
 from netscope.core.executor import TestExecutor
 from netscope.storage.csv_handler import CSVHandler
+
+
+def list_speedtest_servers(timeout: int = 30) -> List[Dict[str, Any]]:
+    """
+    List available speedtest servers (ID, sponsor, name/location) for user selection.
+    Returns list of dicts with keys: id, sponsor, name, label (for display).
+    """
+    try:
+        out = subprocess.run(
+            ["speedtest-cli", "--list"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return []
+    if out.returncode != 0 or not out.stdout:
+        return []
+    servers = []
+    # Format: "  1234) Sponsor (City, Country)" or "  1234) Sponsor"
+    for line in out.stdout.splitlines():
+        m = re.match(r"\s*(\d+)\)\s+(.+)", line.strip())
+        if m:
+            sid, rest = m.group(1), m.group(2).strip()
+            servers.append({
+                "id": sid,
+                "sponsor": rest.split(" (")[0].strip() if " (" in rest else rest,
+                "name": rest.split(" (", 1)[1].rstrip(")") if " (" in rest else "",
+                "label": rest,
+            })
+    return servers[:100]  # cap at 100 for display
 
 
 @dataclass
@@ -74,8 +109,9 @@ class BandwidthTest(BaseTest):
         start_time = time.time()
         
         try:
+            server_info = {}
             if self.method == "speedtest":
-                metrics = self._run_speedtest(target, progress_callback)
+                metrics, server_info = self._run_speedtest(target, progress_callback)
             elif self.method == "socket":
                 metrics = self._run_socket_test(target, duration, progress_callback)
             else:  # http
@@ -83,20 +119,24 @@ class BandwidthTest(BaseTest):
             
             elapsed = time.time() - start_time
             
+            metrics_dict = {
+                "download_mbps": metrics.download_mbps,
+                "upload_mbps": metrics.upload_mbps,
+                "latency_ms": metrics.latency_ms,
+                "jitter_ms": metrics.jitter_ms,
+                "packet_loss_percent": metrics.packet_loss_percent,
+                "test_duration_sec": elapsed,
+                "method": self.method,
+            }
+            metrics_dict.update(server_info)
             result = TestResult(
                 test_name="bandwidth_test",
                 target=target,
                 status="success",
-                message=f"Bandwidth test completed: ↓{metrics.download_mbps:.2f} Mbps ↑{metrics.upload_mbps:.2f} Mbps",
-                metrics={
-                    "download_mbps": metrics.download_mbps,
-                    "upload_mbps": metrics.upload_mbps,
-                    "latency_ms": metrics.latency_ms,
-                    "jitter_ms": metrics.jitter_ms,
-                    "packet_loss_percent": metrics.packet_loss_percent,
-                    "test_duration_sec": elapsed,
-                    "method": self.method,
-                },
+                timestamp=datetime.now(),
+                duration=elapsed,
+                summary=f"Bandwidth test completed: ↓{metrics.download_mbps:.2f} Mbps ↑{metrics.upload_mbps:.2f} Mbps",
+                metrics=metrics_dict,
                 raw_output=f"Download: {metrics.download_mbps:.2f} Mbps\n"
                           f"Upload: {metrics.upload_mbps:.2f} Mbps\n"
                           f"Latency: {metrics.latency_ms:.2f} ms\n"
@@ -112,10 +152,13 @@ class BandwidthTest(BaseTest):
             result = TestResult(
                 test_name="bandwidth_test",
                 target=target,
-                status="error",
-                message=f"Bandwidth test failed: {str(e)}",
+                status="failure",
+                timestamp=datetime.now(),
+                duration=0.0,
+                summary=f"Bandwidth test failed: {str(e)}",
                 metrics={},
                 raw_output=str(e),
+                error=str(e),
             )
             self.csv_handler.write_result(result)
             return result
@@ -124,7 +167,7 @@ class BandwidthTest(BaseTest):
         self,
         target: str,
         progress_callback: Optional[Callable[[int, int], None]] = None,
-    ) -> BandwidthMetrics:
+    ) -> tuple[BandwidthMetrics, dict]:
         """
         Run bandwidth test using speedtest-cli.
         
@@ -133,7 +176,7 @@ class BandwidthTest(BaseTest):
             progress_callback: Progress callback
             
         Returns:
-            BandwidthMetrics
+            (BandwidthMetrics, server_info dict for display)
         """
         import subprocess
         import json
@@ -151,22 +194,32 @@ class BandwidthTest(BaseTest):
         # Run speedtest
         cmd = ["speedtest-cli", "--json"]
         if target != "auto":
-            cmd.extend(["--server", target])
+            cmd.extend(["--server", str(target)])
         
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         
         if result.returncode != 0:
             raise RuntimeError(f"speedtest-cli failed: {result.stderr}")
         
         data = json.loads(result.stdout)
+        server = data.get("server") or {}
+        server_info = {
+            "server_id": server.get("id"),
+            "server_sponsor": server.get("sponsor", ""),
+            "server_name": server.get("name", ""),
+            "server_host": server.get("host", ""),
+            "server_country": server.get("country", ""),
+            "server_latency_ms": data.get("ping") or server.get("latency"),
+        }
         
-        return BandwidthMetrics(
+        metrics = BandwidthMetrics(
             download_mbps=data.get("download", 0) / 1_000_000,  # bits to Mbps
             upload_mbps=data.get("upload", 0) / 1_000_000,
             latency_ms=data.get("ping", 0),
             jitter_ms=0.0,  # speedtest-cli doesn't provide jitter
             packet_loss_percent=0.0,
         )
+        return metrics, server_info
     
     def _run_http_test(
         self,

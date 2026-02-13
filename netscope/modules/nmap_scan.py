@@ -134,6 +134,48 @@ def parse_nmap_xml(xml_text: str) -> Dict[str, Any]:
     return metrics
 
 
+def run_nmap_os_scan(ip: str, timeout: int = 30) -> Optional[str]:
+    """
+    Run nmap OS detection (-O -Pn) on a single host and return the best OS guess.
+    Returns None if nmap is unavailable, scan fails, or no OS match.
+    """
+    if not has_nmap():
+        return None
+    try:
+        proc = subprocess.run(
+            ["nmap", "-O", "-Pn", "-n", ip, "-oX", "-"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        if proc.returncode != 0:
+            return None
+        return parse_nmap_os_from_xml(proc.stdout or "")
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+
+def parse_nmap_os_from_xml(xml_text: str) -> Optional[str]:
+    """
+    Parse nmap XML for host/os/osmatch and return the best OS name (first match).
+    """
+    if not (xml_text or "").strip():
+        return None
+    try:
+        root = ET.fromstring(xml_text)
+        for host in root.findall("host"):
+            os_el = host.find("os")
+            if os_el is None:
+                continue
+            for osmatch in os_el.findall("osmatch"):
+                name = osmatch.attrib.get("name")
+                if name:
+                    return name
+        return None
+    except ET.ParseError:
+        return None
+
+
 class NmapScanTest(BaseTest):
     """
     Nmap-based port / service scanner.
