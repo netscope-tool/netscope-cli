@@ -191,6 +191,31 @@ def _run_interactive(
             if not cidr:
                 continue
             target = cidr  # reuse as 'target' label for consistency
+        elif choice == "Speedtest":
+            server_opt = questionary.select(
+                "Server:",
+                choices=[
+                    Choice("Auto (closest server)", value="auto"),
+                    Choice("List servers and choose by ID", value="list"),
+                ],
+            ).ask()
+            if not server_opt:
+                continue
+            if server_opt == "list":
+                servers = list_speedtest_servers()
+                if not servers:
+                    console.print("[yellow]speedtest-cli not found or failed. Install with: pip install speedtest-cli[/yellow]")
+                    continue
+                from rich.table import Table as RichTable
+                tbl = RichTable(show_header=True, header_style="bold")
+                tbl.add_column("ID", style="cyan")
+                tbl.add_column("Sponsor / Location", style="white")
+                for s in servers[:40]:
+                    tbl.add_row(s["id"], s["label"])
+                console.print(tbl)
+                target = questionary.text("Enter server ID (or leave blank for auto):").ask() or "auto"
+            else:
+                target = "auto"
 
         # Create test run directory and helpers
         test_run_dir = config.create_test_run_dir(choice.lower().replace(" ", "_"))
@@ -201,7 +226,10 @@ def _run_interactive(
 
         # Execute test based on choice
         if target is not None and choice not in {"ARP Scan", "Ping Sweep"}:
-            console.print(f"\n[bold cyan]Running {choice} on {target}...[/bold cyan]\n")
+            if choice == "Speedtest" and target == "auto":
+                console.print(f"\n[bold cyan]Running {choice} (auto server)...[/bold cyan]\n")
+            else:
+                console.print(f"\n[bold cyan]Running {choice} on {target}...[/bold cyan]\n")
         else:
             console.print(f"\n[bold cyan]Running {choice}...[/bold cyan]\n")
 
@@ -317,6 +345,38 @@ def _run_interactive(
                     while _t.is_alive():
                         _t.join(timeout=0.05)
                 result = _result_holder[0]
+                results = [result]
+            elif choice == "Speedtest":
+                from datetime import datetime as _dt
+                from netscope.modules.base import TestResult as _TestResult
+                test = BandwidthTest(executor, csv_handler, method="speedtest")
+                _result_holder = []
+
+                def _run():
+                    try:
+                        _result_holder.append(test.run(target=target))
+                    except Exception as e:
+                        _result_holder.append(_TestResult(
+                            test_name="Speedtest",
+                            target=target,
+                            status="failure",
+                            timestamp=_dt.now(),
+                            duration=0.0,
+                            metrics={},
+                            summary=str(e),
+                            error=str(e),
+                            raw_output=str(e),
+                        ))
+
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Running speedtest…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
+                if result.status == "failure":
+                    console.print(f"[red]Speedtest failed: {result.error}[/red]")
+                    continue
                 results = [result]
             elif choice == "Quick Network Check":
                 results = []
@@ -615,6 +675,7 @@ def show_main_menu() -> str:
         Choice("Nmap Scan — Detailed port & service scan (requires nmap)", value="Nmap Scan"),
         Choice("ARP Scan — Discover devices on local network", value="ARP Scan"),
         Choice("Ping Sweep — Find alive hosts in a network range", value="Ping Sweep"),
+        Choice("Speedtest — Download/upload speed (choose server or auto)", value="Speedtest"),
         Choice("Dashboard — Live network status view", value="Dashboard"),
         Choice("Exit", value="Exit"),
     ]

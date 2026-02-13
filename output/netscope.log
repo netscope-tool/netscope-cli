@@ -304,3 +304,27 @@
 2026-02-13 23:06:08 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=DC:51:93:89:6B:C6
 2026-02-13 23:06:08 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FF:FF:FF:FF:FF:FF
 2026-02-13 23:06:14 | INFO     | netscope.cli.main:_run_interactive:378 | NetScope exited normally
+2026-02-13 23:17:33 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 23:17:33 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 23:18:22 | INFO     | netscope.cli.main:_run_interactive:197 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_231822_ping_sweep
+2026-02-13 23:18:22 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_231822_ping_sweep/results.csv
+2026-02-13 23:18:50 | INFO     | netscope.cli.main:_run_interactive:197 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_231850_arp_scan
+2026-02-13 23:18:50 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_231850_arp_scan/results.csv
+2026-02-13 23:18:50 | INFO     | netscope.core.executor:run_command:54 | Executing command: arp -a
+2026-02-13 23:18:50 | INFO     | netscope.core.executor:run_command:75 | Command completed: arp -a (return code: 0, duration: 0.02s)
+2026-02-13 23:18:50 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=A0:29:42:6F:85:E7
+2026-02-13 23:18:50 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=4E:9D:2C:59:35:AB
+2026-02-13 23:18:50 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=46:BC:8A:4A:C4:A0
+2026-02-13 23:18:50 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=DC:51:93:89:6B:C6
+2026-02-13 23:18:50 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FF:FF:FF:FF:FF:FF
+2026-02-13 23:19:12 | INFO     | netscope.cli.main:_run_interactive:379 | NetScope exited normally
+2026-02-13 23:20:12 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 23:20:12 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 23:20:12 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232012_arp_scan/results.csv
+2026-02-13 23:20:12 | INFO     | netscope.core.executor:run_command:54 | Executing command: arp -a
+2026-02-13 23:20:12 | INFO     | netscope.core.executor:run_command:75 | Command completed: arp -a (return code: 0, duration: 0.48s)
+2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=A0:29:42:6F:85:E7
+2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=4E:9D:2C:59:35:AB
+2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=46:BC:8A:4A:C4:A0
+2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=DC:51:93:89:6B:C6
+2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FF:FF:FF:FF:FF:FF
