@@ -2,16 +2,23 @@
 
 A comprehensive CLI tool for network diagnostics, testing, and reporting.
 
-## Features (Phase 1)
+## Features
 
 - ✅ Cross-platform OS detection (Linux, macOS, Windows)
 - ✅ Automatic tool availability checking
-- ✅ Ping connectivity tests
-- ✅ Traceroute path analysis
-- ✅ DNS resolution testing
-- ✅ CSV logging with timestamps
-- ✅ Structured logging to files
-- ✅ Beautiful terminal output
+- ✅ Ping connectivity tests (with min/avg/max latency)
+- ✅ Traceroute path analysis (with hop table)
+- ✅ DNS resolution testing (IPv4/IPv6 aware)
+- ✅ Pure-Python port scan (top ports) + optional nmap integration
+- ✅ ARP scan and ping sweep for local discovery
+- ✅ CSV logging with timestamps + structured logs
+- ✅ HTML reports and Jupyter notebook reports per run
+- ✅ Beautiful, educational terminal output (summaries, interpretations, glossary)
+
+For a deeper guide, see:
+
+- `docs/manual.md` – concepts, tests, interpreting results, reports.
+- `docs/cli-reference.md` – full command and option reference.
 
 ## Getting started
 
@@ -95,6 +102,10 @@ You’ll see a header, system information, and then a menu where you can choose:
 - Ping Test  
 - Traceroute Test  
 - DNS Lookup  
+- Port Scan  
+- Nmap Scan (if `nmap` is installed)  
+- ARP Scan  
+- Ping Sweep  
 - Exit
 
 ### Non-interactive mode (scripts / automation)
@@ -113,6 +124,18 @@ netscope dns example.com
 
 # Quick network check (ping + traceroute + DNS)
 netscope quick-check example.com
+
+# Pure-Python port scan (top ports)
+netscope ports 192.168.1.1 --preset top100
+
+# Nmap-based scan (if nmap is installed)
+netscope nmap-scan example.com
+
+# ARP scan (local devices)
+netscope arp-scan
+
+# Ping sweep over a small CIDR
+netscope ping-sweep 192.168.1.0/24
 ```
 
 By default, results are shown with the Rich TUI formatting.  
@@ -129,11 +152,16 @@ netscope quick-check example.com --format json
 netscope --version          # or -V
 netscope explain ping       # what the test does and how to interpret results
 netscope explain traceroute
+netscope explain quick-check
 netscope glossary           # list networking terms
 netscope glossary latency   # definition of a term
 netscope history            # last 10 test runs (use -o to point to output dir)
 netscope history -n 5       # last 5 runs
+netscope examples           # common usage scenarios
+netscope troubleshoot       # guided troubleshooting wizard
 ```
+
+For a full command reference, see `docs/cli-reference.md`.
 
 ### Optional config file
 
