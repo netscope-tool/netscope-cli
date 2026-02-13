@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="netscope",
-    version="1.0.0",
+    version="1.0.0",  # Keep in sync with netscope/__init__.py and pyproject.toml
     author="NetScope Team",
     author_email="team@netscope.dev",
     description="Comprehensive network diagnostics and reporting tool",

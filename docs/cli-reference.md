@@ -1,6 +1,7 @@
 # NetScope CLI Reference
 
-This reference lists all `netscope` commands, their purpose, and short examples.
+This reference lists all `netscope` commands, their purpose, and short examples.  
+For concepts, how each test works, and how to interpret results, see **docs/manual.md**.
 
 ## Top-level
 

@@ -1,0 +1,3 @@
+timestamp,test_name,target,metric,value,status,details
+2026-02-13T16:39:03.486231,Traceroute Test,4.149.145.181,hop_count,14,success,Traced route to 4.149.145.181 in 14 hops
+2026-02-13T16:39:03.486231,Traceroute Test,4.149.145.181,destination_reached,True,success,Traced route to 4.149.145.181 in 14 hops

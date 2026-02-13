@@ -1,0 +1,7 @@
+timestamp,test_name,target,metric,value,status,details
+2026-02-13T22:39:21.691706,Ping Test,8.8.8.8,packet_loss,0,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 73.8/201.5/304.0 ms
+2026-02-13T22:39:21.691706,Ping Test,8.8.8.8,min_latency,73.788,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 73.8/201.5/304.0 ms
+2026-02-13T22:39:21.691706,Ping Test,8.8.8.8,avg_latency,201.479,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 73.8/201.5/304.0 ms
+2026-02-13T22:39:21.691706,Ping Test,8.8.8.8,max_latency,304.003,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 73.8/201.5/304.0 ms
+2026-02-13T22:39:21.691706,Ping Test,8.8.8.8,mdev_latency,103.227,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 73.8/201.5/304.0 ms
+2026-02-13T22:39:21.691706,Ping Test,8.8.8.8,packets_received,4,success,Host 8.8.8.8 is reachable. Latency min/avg/max: 73.8/201.5/304.0 ms

@@ -1,5 +1,10 @@
 # NetScope Manual
 
+## Version and help
+
+- **Version**: Run `netscope --version` (or `-V`) to see the installed version.
+- **Help**: Run `netscope --help` for a summary of commands; see `docs/cli-reference.md` for the full reference.
+
 ## Overview
 
 NetScope is a CLI tool for network diagnostics, testing, and reporting. It wraps tools like

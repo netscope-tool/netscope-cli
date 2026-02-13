@@ -192,6 +192,16 @@ pip install -r requirements.txt   # includes pytest
 pytest tests/ -v
 ```
 
+## Distribution
+
+- **PyPI** (after release): `pip install netscope-cli`
+- **Docker**: From the project root, `docker build -t netscope-cli .` then  
+  `docker run --rm netscope-cli --version` or `docker run --rm -v $(pwd)/output:/data netscope-cli ping 8.8.8.8`
+- **Homebrew**: A formula template is in `netscope.rb`; after the first PyPI release, update the `sha256` and use  
+  `brew install --build-from-source ./netscope.rb` or add to a tap. See `DISTRIBUTION_GUIDE.md`.
+
+Version is defined in `netscope/__init__.py` and `pyproject.toml`; keep them in sync for releases.
+
 ## Requirements
 
 ### Linux

@@ -195,3 +195,67 @@
 2026-02-13 14:16:06 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: hop_count=7
 2026-02-13 14:16:06 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: destination_reached=True
 2026-02-13 14:16:24 | INFO     | netscope.cli.main:_run_interactive:377 | NetScope exited normally
+2026-02-13 15:11:22 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 15:11:22 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 15:12:01 | INFO     | netscope.cli.main:_run_interactive:149 | NetScope exited normally
+2026-02-13 15:14:35 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 15:14:35 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 15:14:59 | INFO     | netscope.cli.main:_run_interactive:149 | NetScope exited normally
+2026-02-13 16:37:12 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 16:37:12 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 16:37:43 | INFO     | netscope.cli.main:_run_interactive:196 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_163743_ping_test
+2026-02-13 16:37:43 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_163743_ping_test/results.csv
+2026-02-13 16:37:43 | INFO     | netscope.core.executor:run_command:54 | Executing command: ping -c 4 4.149.145.181
+2026-02-13 16:37:57 | INFO     | netscope.core.executor:run_command:75 | Command completed: ping -c 4 4.149.145.181 (return code: 2, duration: 14.02s)
+2026-02-13 16:38:09 | INFO     | netscope.cli.main:_run_interactive:378 | NetScope exited normally
+2026-02-13 16:38:52 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 16:38:52 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 16:39:03 | INFO     | netscope.cli.main:_run_interactive:196 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_163903_traceroute_test
+2026-02-13 16:39:03 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_163903_traceroute_test/results.csv
+2026-02-13 16:39:03 | INFO     | netscope.core.executor:run_command:54 | Executing command: traceroute -n -m 15 4.149.145.181
+2026-02-13 16:39:25 | INFO     | netscope.core.executor:run_command:75 | Command completed: traceroute -n -m 15 4.149.145.181 (return code: 0, duration: 21.96s)
+2026-02-13 16:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: hop_count=14
+2026-02-13 16:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: destination_reached=True
+2026-02-13 16:39:49 | INFO     | netscope.cli.main:_run_interactive:378 | NetScope exited normally
+2026-02-13 16:48:12 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 16:48:12 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 16:48:31 | INFO     | netscope.cli.main:_run_interactive:196 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_164831_dns_lookup
+2026-02-13 16:48:31 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_164831_dns_lookup/results.csv
+2026-02-13 16:48:31 | INFO     | netscope.core.executor:run_command:54 | Executing command: dig +short 4.149.145.181
+2026-02-13 16:48:31 | INFO     | netscope.core.executor:run_command:75 | Command completed: dig +short 4.149.145.181 (return code: 0, duration: 0.13s)
+2026-02-13 16:48:31 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_count=0
+2026-02-13 16:48:42 | INFO     | netscope.cli.main:_run_interactive:378 | NetScope exited normally
+2026-02-13 16:49:32 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 16:49:32 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 16:49:43 | INFO     | netscope.cli.main:_run_interactive:196 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_164943_arp_scan
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_164943_arp_scan/results.csv
+2026-02-13 16:49:43 | INFO     | netscope.core.executor:run_command:54 | Executing command: arp -a
+2026-02-13 16:49:43 | INFO     | netscope.core.executor:run_command:75 | Command completed: arp -a (return code: 0, duration: 0.44s)
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=D4:13:F8:1B:5F:C0
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=20:47:47:7F:9A:F2
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=BC:24:11:E7:FE:40
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=BC:24:11:34:AF:76
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FA:C4:86:AD:1E:C5
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=3A:67:CC:58:55:40
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=9A:E4:8E:EA:5E:38
+2026-02-13 16:49:43 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FF:FF:FF:FF:FF:FF
+2026-02-13 16:49:53 | INFO     | netscope.cli.main:_run_interactive:378 | NetScope exited normally
+2026-02-13 17:42:34 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 17:42:34 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 17:42:53 | INFO     | netscope.cli.main:_run_interactive:149 | NetScope exited normally
+2026-02-13 22:37:19 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 22:37:19 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 22:39:10 | INFO     | netscope.cli.main:_run_interactive:149 | NetScope exited normally
+2026-02-13 22:39:14 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 22:39:14 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 22:39:21 | INFO     | netscope.cli.main:_run_interactive:196 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_223921_ping_test
+2026-02-13 22:39:21 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_223921_ping_test/results.csv
+2026-02-13 22:39:21 | INFO     | netscope.core.executor:run_command:54 | Executing command: ping -c 4 8.8.8.8
+2026-02-13 22:39:25 | INFO     | netscope.core.executor:run_command:75 | Command completed: ping -c 4 8.8.8.8 (return code: 0, duration: 3.32s)
+2026-02-13 22:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packet_loss=0
+2026-02-13 22:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: min_latency=73.788
+2026-02-13 22:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: avg_latency=201.479
+2026-02-13 22:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: max_latency=304.003
+2026-02-13 22:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: mdev_latency=103.227
+2026-02-13 22:39:25 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packets_received=4
+2026-02-13 22:39:27 | INFO     | netscope.cli.main:_run_interactive:378 | NetScope exited normally
