@@ -7,7 +7,7 @@ from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
 from netscope.modules.ports import PortScanTest, PORT_PRESET_TOP20, PORT_PRESET_TOP100
 from netscope.modules.nmap_scan import NmapScanTest
-from netscope.modules.arp_scan import ARPScanTest
+from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
 from netscope.modules.ping_sweep import PingSweepTest
 
 __all__ = [
@@ -20,6 +20,6 @@ __all__ = [
     "PORT_PRESET_TOP20",
     "PORT_PRESET_TOP100",
     "NmapScanTest",
-    "ARPScanTest",
+    "ARPScanTestEnhanced",
     "PingSweepTest",
 ]

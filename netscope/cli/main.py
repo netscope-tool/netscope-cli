@@ -33,7 +33,7 @@ from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
 from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortScanTest
 from netscope.modules.nmap_scan import NmapScanTest
-from netscope.modules.arp_scan import ARPScanTest
+from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
 from netscope.modules.ping_sweep import PingSweepTest
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
@@ -260,7 +260,7 @@ def _run_interactive(
                 results = [result]
             elif choice == "ARP Scan":
                 console.print("\n[dim]Scanning local ARP table for devices...[/dim]\n")
-                test = ARPScanTest(executor, csv_handler)
+                test = ARPScanTestEnhanced(executor, csv_handler)
                 _result_holder = []
 
                 def _run():
@@ -954,7 +954,7 @@ def arp_scan(
     executor = TestExecutor(system_info, logger)
 
     console.print(f"\n[bold cyan]Running ARP Scan...[/bold cyan]\n")
-    test = ARPScanTest(executor, csv_handler)
+    test = ARPScanTestEnhanced(executor, csv_handler)
     _result_holder = []
 
     def _run() -> None:
