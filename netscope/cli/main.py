@@ -32,6 +32,7 @@ from netscope.core.executor import TestExecutor
 from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
 from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortScanTest
+from netscope.modules.nmap_scan import NmapScanTest
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
 
@@ -236,6 +237,21 @@ def _run_interactive(
                         _result_holder.append(test.run(target, preset=preset, progress_callback=_cb))
                     _t = threading.Thread(target=_run)
                     _t.start()
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                result = _result_holder[0]
+                results = [result]
+            elif choice == "Nmap Scan":
+                console.print("\n[dim]Note: This test requires the external `nmap` tool to be installed.[/dim]\n")
+                test = NmapScanTest(executor, csv_handler)
+                _result_holder = []
+
+                def _run():
+                    _result_holder.append(test.run(target))
+
+                _t = threading.Thread(target=_run)
+                _t.start()
+                with Live(Spinner("dots", text="Running nmap scan…"), console=console, refresh_per_second=8):
                     while _t.is_alive():
                         _t.join(timeout=0.05)
                 result = _result_holder[0]
@@ -533,6 +549,7 @@ def show_main_menu() -> str:
         Choice("Traceroute Test — Show path and hops to target", value="Traceroute Test"),
         Choice("DNS Lookup — Resolve hostname to IP address(es)", value="DNS Lookup"),
         Choice("Port Scan — Check which TCP ports are open", value="Port Scan"),
+        Choice("Nmap Scan — Detailed port & service scan (requires nmap)", value="Nmap Scan"),
         Choice("Exit", value="Exit"),
     ]
 
@@ -742,6 +759,63 @@ def ports(
         test_run_dir,
         {
             "test_type": "Port Scan",
+            "target": target,
+            "status": result.status,
+            "system_info": system_info.model_dump(mode="json"),
+        },
+    )
+
+
+@app.command(name="nmap-scan")
+def nmap_scan(
+    target: str = typer.Argument(..., help="Target IP or hostname (shortcuts: localhost, gateway, dns)"),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory for results",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output",
+    ),
+    output_format: str = typer.Option(
+        "rich",
+        "--format",
+        "-f",
+        help="Output format: 'rich' (default) or 'json'",
+    ),
+    ports: Optional[str] = typer.Option(
+        None,
+        "--ports",
+        "-p",
+        help="Ports to scan (e.g. '22,80,443' or '1-1024'). If omitted, nmap defaults are used.",
+    ),
+):
+    """
+    Run an nmap-based port and service scan (requires `nmap` to be installed).
+    """
+    target = _resolve_target(target)
+    config, logger, _detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("nmap_scan")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+
+    console.print(f"\n[bold cyan]Running Nmap Scan on {target}...[/bold cyan]\n")
+    test = NmapScanTest(executor, csv_handler)
+    result = test.run(target, ports=ports)
+
+    if output_format == "json":
+        _output_results_json(result)
+    else:
+        format_test_result(result, console)
+
+    config.save_metadata(
+        test_run_dir,
+        {
+            "test_type": "Nmap Scan",
             "target": target,
             "status": result.status,
             "system_info": system_info.model_dump(mode="json"),
