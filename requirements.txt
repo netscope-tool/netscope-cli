@@ -1,3 +1,4 @@
+# Core dependencies
 typer>=0.9.0
 rich>=13.0.0
 questionary>=2.0.0
@@ -7,4 +8,19 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 python-dateutil>=2.8.0
 PyYAML>=6.0
+
+# Testing
 pytest>=7.0
+
+# Optional dependencies (install with pip install netscope-cli[security,bandwidth,advanced])
+# Security features
+# cryptography>=41.0
+# python-nmap>=0.7.1
+
+# Bandwidth testing
+# speedtest-cli>=2.1.3
+
+# Advanced features
+# scapy>=2.5.0
+# netifaces>=0.11.0
+# aiohttp>=3.9.0

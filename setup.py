@@ -5,13 +5,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="netscope",
-    version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    version="1.0.0",
+    author="NetScope Team",
+    author_email="team@netscope.dev",
     description="Comprehensive network diagnostics and reporting tool",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/netscope",
+    url="https://github.com/netscope-tool/netscope-cli",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -20,7 +20,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: System Administrators",
         "Topic :: System :: Networking :: Monitoring",
     ],
@@ -34,7 +34,30 @@ setup(
         "pydantic>=2.0.0",
         "pydantic-settings>=2.0.0",
         "python-dateutil>=2.8.0",
+        "PyYAML>=6.0",
     ],
+    extras_require={
+        "dev": [
+            "pytest>=7.0",
+            "pytest-cov>=4.0",
+            "pytest-asyncio>=0.21.0",
+            "black>=23.0",
+            "ruff>=0.1.0",
+            "mypy>=1.0",
+        ],
+        "security": [
+            "cryptography>=41.0",
+            "python-nmap>=0.7.1",
+        ],
+        "bandwidth": [
+            "speedtest-cli>=2.1.3",
+        ],
+        "advanced": [
+            "scapy>=2.5.0",
+            "netifaces>=0.11.0",
+            "aiohttp>=3.9.0",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "netscope=netscope.__main__:main",

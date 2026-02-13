@@ -1,0 +1,164 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netscope-cli"
+version = "1.0.0"
+description = "Comprehensive network diagnostics, testing, and security audit tool"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "NetScope Team", email = "team@netscope.dev"}
+]
+maintainers = [
+    {name = "NetScope Team", email = "team@netscope.dev"}
+]
+keywords = [
+    "network",
+    "diagnostics",
+    "security",
+    "audit",
+    "monitoring",
+    "testing",
+    "cli",
+    "networking",
+    "devops",
+    "sysadmin",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Topic :: System :: Networking :: Monitoring",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Security",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Console",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "questionary>=2.0.0",
+    "pandas>=2.0.0",
+    "loguru>=0.7.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dateutil>=2.8.0",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+    "pre-commit>=3.0",
+]
+security = [
+    "cryptography>=41.0",
+    "python-nmap>=0.7.1",
+]
+bandwidth = [
+    "speedtest-cli>=2.1.3",
+]
+advanced = [
+    "scapy>=2.5.0",
+    "netifaces>=0.11.0",
+    "aiohttp>=3.9.0",
+]
+all = [
+    "netscope-cli[dev,security,bandwidth,advanced]",
+]
+
+[project.urls]
+Homepage = "https://github.com/netscope-tool/netscope-cli"
+Documentation = "https://netscope-cli.readthedocs.io"
+Repository = "https://github.com/netscope-tool/netscope-cli"
+"Bug Tracker" = "https://github.com/netscope-tool/netscope-cli/issues"
+Changelog = "https://github.com/netscope-tool/netscope-cli/blob/main/CHANGELOG.md"
+
+[project.scripts]
+netscope = "netscope.__main__:main"
+
+[tool.setuptools]
+packages = ["netscope"]
+
+[tool.setuptools.package-data]
+netscope = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --cov=netscope --cov-report=term-missing --cov-report=html"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["netscope"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
