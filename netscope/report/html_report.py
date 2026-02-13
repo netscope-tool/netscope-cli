@@ -78,6 +78,13 @@ def generate_html(run_dir: Path) -> str:
 
     grouped = _group_rows_by_test(rows)
 
+    # Aggregate simple data for charts: test status counts
+    status_counts = {"success": 0, "warning": 0, "failure": 0}
+    for row in rows:
+        s = (row.get("status") or "").lower()
+        if s in status_counts:
+            status_counts[s] += 1
+
     # Simple CSS for a clean report
     css = """
 body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -172,6 +179,57 @@ code { background: #020617; padding: 0.05rem 0.3rem; border-radius: 0.25rem; }
 
     body_html = "<main>" + sys_html + "".join(sections) + "</main>"
 
+    # Basic chart data (tests by status)
+    chart_labels = ["SUCCESS", "WARNING", "FAILURE"]
+    chart_values = [
+        status_counts["success"],
+        status_counts["warning"],
+        status_counts["failure"],
+    ]
+
+    charts_html = """
+<div class="card">
+  <div class="section-title">Tests by Status</div>
+  <canvas id="statusChart" height="120"></canvas>
+</div>
+"""
+
+    body_html = "<main>" + sys_html + charts_html + "".join(sections) + "</main>"
+
+    # Inline Chart.js (via CDN) and initialization script
+    chart_js = f"""
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  new Chart(ctx, {{
+    type: 'bar',
+    data: {{
+      labels: {chart_labels},
+      datasets: [{{
+        label: 'Tests',
+        data: {chart_values},
+        backgroundColor: ['#22c55e', '#eab308', '#ef4444'],
+      }}],
+    }},
+    options: {{
+      responsive: true,
+      plugins: {{
+        legend: {{ display: false }},
+      }},
+      scales: {{
+        x: {{
+          ticks: {{ color: '#e5e7eb' }},
+        }},
+        y: {{
+          beginAtZero: true,
+          ticks: {{ color: '#9ca3af', precision: 0 }},
+        }},
+      }},
+    }},
+  }});
+</script>
+"""
+
     html = f"""<!doctype html>
 <html lang="en">
   <head>
@@ -182,6 +240,7 @@ code { background: #020617; padding: 0.05rem 0.3rem; border-radius: 0.25rem; }
   <body>
     {header_html}
     {body_html}
+    {chart_js}
   </body>
 </html>
 """
