@@ -5,6 +5,7 @@ Main CLI application using Typer.
 from __future__ import annotations
 
 import json
+import sys
 import threading
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
@@ -35,7 +36,7 @@ from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortSc
 from netscope.modules.nmap_scan import NmapScanTest
 from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
 from netscope.modules.ping_sweep import PingSweepTest
-from netscope.modules.bandwidth import BandwidthTest, list_speedtest_servers
+from netscope.modules.bandwidth import BandwidthTest, list_speedtest_servers, is_speedtest_available, try_install_speedtest_cli
 from netscope.parallel.executor import BatchTestRunner, ParallelTestConfig
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
@@ -347,37 +348,56 @@ def _run_interactive(
                 result = _result_holder[0]
                 results = [result]
             elif choice == "Speedtest":
-                from datetime import datetime as _dt
-                from netscope.modules.base import TestResult as _TestResult
-                test = BandwidthTest(executor, csv_handler, method="speedtest")
-                _result_holder = []
+                if not is_speedtest_available():
+                    if questionary.confirm(
+                        "speedtest-cli is not installed. Install it now? (uses pip for this environment)",
+                        default=True,
+                    ).ask():
+                        console.print("[dim]Installing speedtest-cli…[/dim]")
+                        if try_install_speedtest_cli() and is_speedtest_available():
+                            console.print("[green]speedtest-cli installed.[/green]")
+                        else:
+                            console.print("[yellow]Install failed or speedtest-cli still not in PATH. Speedtest skipped.[/yellow]")
+                            results = []
+                    else:
+                        console.print("[dim]Speedtest skipped.[/dim]")
+                        results = []
+                if not is_speedtest_available():
+                    # Skipped or install failed; results already set to []
+                    pass
+                else:
+                    from datetime import datetime as _dt
+                    from netscope.modules.base import TestResult as _TestResult
+                    test = BandwidthTest(executor, csv_handler, method="speedtest")
+                    _result_holder = []
 
-                def _run():
-                    try:
-                        _result_holder.append(test.run(target=target))
-                    except Exception as e:
-                        _result_holder.append(_TestResult(
-                            test_name="Speedtest",
-                            target=target,
-                            status="failure",
-                            timestamp=_dt.now(),
-                            duration=0.0,
-                            metrics={},
-                            summary=str(e),
-                            error=str(e),
-                            raw_output=str(e),
-                        ))
+                    def _run():
+                        try:
+                            _result_holder.append(test.run(target=target))
+                        except Exception as e:
+                            _result_holder.append(_TestResult(
+                                test_name="Speedtest",
+                                target=target,
+                                status="failure",
+                                timestamp=_dt.now(),
+                                duration=0.0,
+                                metrics={},
+                                summary=str(e),
+                                error=str(e),
+                                raw_output=str(e),
+                            ))
 
-                _t = threading.Thread(target=_run)
-                _t.start()
-                with Live(Spinner("dots", text="Running speedtest…"), console=console, refresh_per_second=8):
-                    while _t.is_alive():
-                        _t.join(timeout=0.05)
-                result = _result_holder[0]
-                if result.status == "failure":
-                    console.print(f"[red]Speedtest failed: {result.error}[/red]")
-                    continue
-                results = [result]
+                    _t = threading.Thread(target=_run)
+                    _t.start()
+                    with Live(Spinner("dots", text="Running speedtest…"), console=console, refresh_per_second=8):
+                        while _t.is_alive():
+                            _t.join(timeout=0.05)
+                    result = _result_holder[0]
+                    if result.status == "failure":
+                        console.print(f"[red]Speedtest failed: {result.error}[/red]")
+                        results = []
+                    else:
+                        results = [result]
             elif choice == "Quick Network Check":
                 results = []
                 with Progress(
@@ -400,30 +420,26 @@ def _run_interactive(
                     results.append(test.run(target))
                     progress.update(task, advance=1, description="Done")
 
-            # Display results
-            if choice == "Quick Network Check":
-                format_quick_check_summary(results, console)
-            else:
-                format_test_result(results[0], console)
+            # Display results and save metadata only when we have results (e.g. skipped Speedtest has results = [])
+            if results:
+                if choice == "Quick Network Check":
+                    format_quick_check_summary(results, console)
+                else:
+                    format_test_result(results[0], console)
 
-            primary_result = results[0]
-
-            # Save metadata
-            config.save_metadata(
-                test_run_dir,
-                {
-                    "test_type": choice,
-                    "target": target,
-                    "status": primary_result.status,
-                    "system_info": system_info.model_dump(mode="json"),
-                },
-            )
-
-            console.print(f"\n[bold green]✓ Results saved to:[/bold green] {test_run_dir}")
-            console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
-
-            # Show network status again (right-bottom) after results
-            print_network_status(console)
+                primary_result = results[0]
+                config.save_metadata(
+                    test_run_dir,
+                    {
+                        "test_type": choice,
+                        "target": target,
+                        "status": primary_result.status,
+                        "system_info": system_info.model_dump(mode="json"),
+                    },
+                )
+                console.print(f"\n[bold green]✓ Results saved to:[/bold green] {test_run_dir}")
+                console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+                print_network_status(console)
 
         except Exception as e:  # pragma: no cover - defensive
             logger.error(f"Test failed: {e}")
@@ -1108,7 +1124,14 @@ def speedtest(
     """
     if list_servers:
         from rich.table import Table as RichTable
-        servers = list_speedtest_servers()
+        if not is_speedtest_available():
+            if sys.stdin.isatty() and questionary.confirm(
+                "speedtest-cli is not installed. Install it now? (uses pip for this environment)",
+                default=True,
+            ).ask():
+                console.print("[dim]Installing speedtest-cli…[/dim]")
+                try_install_speedtest_cli()
+        servers = list_speedtest_servers() if is_speedtest_available() else []
         if not servers:
             console.print("[yellow]speedtest-cli not found or failed. Install with: pip install speedtest-cli[/yellow]")
             raise typer.Exit(1)
@@ -1121,6 +1144,17 @@ def speedtest(
         console.print(t)
         console.print("\n[dim]Example: netscope speedtest --server 1234[/dim]\n")
         return
+
+    if not is_speedtest_available():
+        if sys.stdin.isatty() and questionary.confirm(
+            "speedtest-cli is not installed. Install it now? (uses pip for this environment)",
+            default=True,
+        ).ask():
+            console.print("[dim]Installing speedtest-cli…[/dim]")
+            try_install_speedtest_cli()
+        if not is_speedtest_available():
+            console.print("[yellow]speedtest-cli is required. Install with: pip install speedtest-cli[/yellow]")
+            raise typer.Exit(1)
 
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("speedtest")

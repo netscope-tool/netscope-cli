@@ -1,0 +1,4 @@
+2026-02-13 23:27:55 | ERROR    | netscope.cli.main:_run_interactive:429 | Test failed: Can't instantiate abstract class BandwidthTest without an implementation for abstract method 'parse_output'
+2026-02-13 23:28:38 | ERROR    | netscope.cli.main:_run_interactive:429 | Test failed: Can't instantiate abstract class BandwidthTest without an implementation for abstract method 'parse_output'
+2026-02-13 23:28:51 | ERROR    | netscope.modules.bandwidth:run:151 | Bandwidth test failed: speedtest-cli not installed. Install with: pip install speedtest-cli
+2026-02-13 23:31:16 | ERROR    | netscope.modules.bandwidth:run:150 | Bandwidth test failed: speedtest-cli not installed. Install with: pip install speedtest-cli

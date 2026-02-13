@@ -328,3 +328,34 @@
 2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=46:BC:8A:4A:C4:A0
 2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=DC:51:93:89:6B:C6
 2026-02-13 23:20:13 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FF:FF:FF:FF:FF:FF
+2026-02-13 23:27:37 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 23:27:37 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 23:27:37 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232737_arp_scan/results.csv
+2026-02-13 23:27:37 | INFO     | netscope.core.executor:run_command:54 | Executing command: arp -a
+2026-02-13 23:27:38 | INFO     | netscope.core.executor:run_command:75 | Command completed: arp -a (return code: 0, duration: 0.49s)
+2026-02-13 23:27:38 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=A0:29:42:6F:85:E7
+2026-02-13 23:27:38 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=4E:9D:2C:59:35:AB
+2026-02-13 23:27:38 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=46:BC:8A:4A:C4:A0
+2026-02-13 23:27:38 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=DC:51:93:89:6B:C6
+2026-02-13 23:27:38 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: device_info=FF:FF:FF:FF:FF:FF
+2026-02-13 23:27:41 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 23:27:41 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 23:27:55 | INFO     | netscope.cli.main:_run_interactive:222 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232755_speedtest
+2026-02-13 23:27:55 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232755_speedtest/results.csv
+2026-02-13 23:27:55 | ERROR    | netscope.cli.main:_run_interactive:429 | Test failed: Can't instantiate abstract class BandwidthTest without an implementation for abstract method 'parse_output'
+2026-02-13 23:28:38 | INFO     | netscope.cli.main:_run_interactive:222 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232838_speedtest
+2026-02-13 23:28:38 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232838_speedtest/results.csv
+2026-02-13 23:28:38 | ERROR    | netscope.cli.main:_run_interactive:429 | Test failed: Can't instantiate abstract class BandwidthTest without an implementation for abstract method 'parse_output'
+2026-02-13 23:28:45 | INFO     | netscope.cli.main:_run_interactive:439 | NetScope exited normally
+2026-02-13 23:28:47 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 23:28:47 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 23:28:51 | INFO     | netscope.cli.main:_run_interactive:222 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232851_speedtest
+2026-02-13 23:28:51 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_232851_speedtest/results.csv
+2026-02-13 23:28:51 | ERROR    | netscope.modules.bandwidth:run:151 | Bandwidth test failed: speedtest-cli not installed. Install with: pip install speedtest-cli
+2026-02-13 23:29:12 | INFO     | netscope.cli.main:_run_interactive:150 | NetScope exited normally
+2026-02-13 23:31:04 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 23:31:04 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 23:31:16 | INFO     | netscope.cli.main:_run_interactive:222 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_233116_speedtest
+2026-02-13 23:31:16 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_233116_speedtest/results.csv
+2026-02-13 23:31:16 | ERROR    | netscope.modules.bandwidth:run:150 | Bandwidth test failed: speedtest-cli not installed. Install with: pip install speedtest-cli
+2026-02-13 23:31:16 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: error=speedtest-cli not installed. Install with: pip install speedtest-cli

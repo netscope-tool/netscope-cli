@@ -20,6 +20,30 @@ from netscope.core.executor import TestExecutor
 from netscope.storage.csv_handler import CSVHandler
 
 
+def is_speedtest_available() -> bool:
+    """Return True if speedtest-cli is installed and available in PATH."""
+    import shutil
+    return shutil.which("speedtest-cli") is not None
+
+
+def try_install_speedtest_cli() -> bool:
+    """
+    Try to install speedtest-cli via pip. Returns True if install succeeded (or already installed).
+    Uses current Python's pip so it installs into the same environment as netscope.
+    """
+    import sys
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "speedtest-cli"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        return proc.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
 def list_speedtest_servers(timeout: int = 30) -> List[Dict[str, Any]]:
     """
     List available speedtest servers (ID, sponsor, name/location) for user selection.
@@ -143,10 +167,9 @@ class BandwidthTest(BaseTest):
                           f"Jitter: {metrics.jitter_ms:.2f} ms\n"
                           f"Packet Loss: {metrics.packet_loss_percent:.2f}%",
             )
-            
-            self.csv_handler.write_result(result)
+            self._log_to_csv(result)
             return result
-            
+
         except Exception as e:
             self.executor.logger.error(f"Bandwidth test failed: {e}")
             result = TestResult(
@@ -160,9 +183,37 @@ class BandwidthTest(BaseTest):
                 raw_output=str(e),
                 error=str(e),
             )
-            self.csv_handler.write_result(result)
+            self._log_to_csv(result)
             return result
-    
+
+    def _log_to_csv(self, result: TestResult) -> None:
+        """Write result to CSV (one row per metric, or one row for failure)."""
+        if result.metrics:
+            for metric_name, metric_value in result.metrics.items():
+                self.csv_handler.write_result(
+                    timestamp=result.timestamp,
+                    test_name=result.test_name,
+                    target=result.target,
+                    metric=metric_name,
+                    value=metric_value,
+                    status=result.status,
+                    details=result.summary or "",
+                )
+        else:
+            self.csv_handler.write_result(
+                timestamp=result.timestamp,
+                test_name=result.test_name,
+                target=result.target,
+                metric="error",
+                value=result.error or result.summary or "",
+                status=result.status,
+                details=result.summary or "",
+            )
+
+    def parse_output(self, output: str) -> Dict[str, Any]:
+        """Bandwidth test builds metrics in run(); no raw output parsing."""
+        return {}
+
     def _run_speedtest(
         self,
         target: str,
@@ -478,11 +529,14 @@ class JitterTest(BaseTest):
                 jitter = 0.0
                 packet_loss = 100.0
             
+            elapsed = time.time() - start_time
             result = TestResult(
                 test_name="jitter_test",
                 target=target,
                 status="success" if packet_loss < 5 else "warning",
-                message=f"Jitter: {jitter:.2f}ms, Packet Loss: {packet_loss:.2f}%",
+                timestamp=datetime.now(),
+                duration=elapsed,
+                summary=f"Jitter: {jitter:.2f}ms, Packet Loss: {packet_loss:.2f}%",
                 metrics={
                     "avg_latency_ms": avg_latency,
                     "jitter_ms": jitter,
@@ -495,23 +549,53 @@ class JitterTest(BaseTest):
                           f"Packet Loss: {packet_loss:.2f}%\n"
                           f"Packets: {count - lost_packets}/{count}",
             )
-            
-            self.csv_handler.write_result(result)
+            self._log_jitter_to_csv(result)
             return result
-            
+
         except Exception as e:
             self.executor.logger.error(f"Jitter test failed: {e}")
             result = TestResult(
                 test_name="jitter_test",
                 target=target,
-                status="error",
-                message=f"Jitter test failed: {str(e)}",
+                status="failure",
+                timestamp=datetime.now(),
+                duration=time.time() - start_time,
+                summary=f"Jitter test failed: {str(e)}",
                 metrics={},
                 raw_output=str(e),
+                error=str(e),
             )
-            self.csv_handler.write_result(result)
+            self._log_jitter_to_csv(result)
             return result
-    
+
+    def _log_jitter_to_csv(self, result: TestResult) -> None:
+        """Write jitter result to CSV."""
+        if result.metrics:
+            for metric_name, metric_value in result.metrics.items():
+                self.csv_handler.write_result(
+                    timestamp=result.timestamp,
+                    test_name=result.test_name,
+                    target=result.target,
+                    metric=metric_name,
+                    value=metric_value,
+                    status=result.status,
+                    details=result.summary or "",
+                )
+        else:
+            self.csv_handler.write_result(
+                timestamp=result.timestamp,
+                test_name=result.test_name,
+                target=result.target,
+                metric="error",
+                value=result.error or result.summary or "",
+                status=result.status,
+                details=result.summary or "",
+            )
+
+    def parse_output(self, output: str) -> Dict[str, Any]:
+        """Jitter test builds metrics in run()."""
+        return {}
+
     def _measure_rtt(self, target: str, timeout: float = 1.0) -> Optional[float]:
         """
         Measure round-trip time using ICMP (via ping command).
