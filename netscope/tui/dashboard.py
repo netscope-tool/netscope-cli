@@ -227,31 +227,38 @@ class NetworkDashboard:
         layout["status"].update(self.render_status())
         layout["footer"].update(self.render_footer())
     
-    def run(self, duration: int = 60) -> None:
+    def run(self, duration: int = 0) -> None:
         """
         Run dashboard in live mode.
         
         Args:
-            duration: How long to run (seconds), 0 for indefinite
+            duration: How long to run (seconds). If 0, run until user quits.
         """
         layout = self.create_layout()
-        
         start_time = time.time()
-        
+
         with Live(layout, console=self.console, refresh_per_second=2, screen=True) as live:
             while True:
-                # Update metrics (in real implementation, fetch from network)
+                # Update timestamp (in a real implementation, also refresh metrics from tests)
                 self.metrics.last_update = datetime.now()
-                
+
                 # Render dashboard
                 self.render(layout)
                 live.update(layout)
-                
-                # Check duration
+
+                # Duration-based exit (for automated use)
                 if duration > 0 and time.time() - start_time > duration:
                     break
-                
-                time.sleep(0.5)
+
+                # Simple key handling: Q=quit, R=refresh, H=help
+                cmd = self.console.input("[dim][Q]uit, [R]efresh, [H]elp >[/dim] ").strip().lower()
+                if cmd == "q":
+                    break
+                if cmd == "h":
+                    self.console.print(
+                        "\n[dim]Dashboard keys: Q = quit, R = refresh (re-render), H = help.[/dim]\n"
+                    )
+                # For 'r' or empty input, just loop and re-render
     
     def _get_latency_color(self, latency: float) -> str:
         """Get color for latency value."""
