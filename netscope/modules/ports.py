@@ -1,8 +1,10 @@
 """
 Port scan test: pure-Python TCP port scanner (no nmap required).
+Now uses a thread pool for faster scanning of larger port sets.
 """
 
 import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
@@ -41,17 +43,29 @@ def scan_ports(
     open_ports: List[int] = []
     closed_ports: List[int] = []
     total = len(ports)
+    completed = 0
 
-    for i, port in enumerate(ports):
+    def check_port(port: int) -> tuple[int, bool]:
         try:
             with socket.create_connection((host, port), timeout=timeout):
-                open_ports.append(port)
+                return port, True
         except (socket.timeout, socket.error, OSError):
-            closed_ports.append(port)
-        if progress_callback is not None:
-            progress_callback(i + 1, total)
+            return port, False
 
-    return open_ports, closed_ports
+    max_workers = min(64, total) if total > 0 else 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_port = {executor.submit(check_port, port): port for port in ports}
+        for future in as_completed(future_to_port):
+            port, is_open = future.result()
+            if is_open:
+                open_ports.append(port)
+            else:
+                closed_ports.append(port)
+            completed += 1
+            if progress_callback is not None:
+                progress_callback(completed, total)
+
+    return sorted(open_ports), sorted(closed_ports)
 
 
 class PortScanTest(BaseTest):

@@ -35,6 +35,7 @@ from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortSc
 from netscope.modules.nmap_scan import NmapScanTest
 from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
 from netscope.modules.ping_sweep import PingSweepTest
+from netscope.parallel.executor import BatchTestRunner, ParallelTestConfig
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
 
@@ -1191,7 +1192,7 @@ def quick_check(
     ),
 ):
     """
-    Run all core tests (ping, traceroute, DNS) in sequence.
+    Run all core tests (ping, traceroute, DNS) in parallel.
     """
     target = _resolve_target(target)
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
@@ -1201,8 +1202,19 @@ def quick_check(
 
     console.print(f"\n[bold cyan]Running Quick Network Check on {target}...[/bold cyan]\n")
 
-    tests = [PingTest(executor, csv_handler), TracerouteTest(executor, csv_handler), DNSTest(executor, csv_handler)]
-    results = []
+    # Prepare test instances
+    ping_test = PingTest(executor, csv_handler)
+    trace_test = TracerouteTest(executor, csv_handler)
+    dns_test = DNSTest(executor, csv_handler)
+
+    runner = BatchTestRunner(ParallelTestConfig(max_workers=3, timeout=config.timeout))
+
+    tests_spec = [
+        {"name": "Ping Test", "func": ping_test.run, "target": target},
+        {"name": "Traceroute Test", "func": trace_test.run, "target": target},
+        {"name": "DNS Lookup", "func": dns_test.run, "target": target},
+    ]
+
     from rich.progress import Progress, SpinnerColumn, TextColumn, TaskProgressColumn
 
     with Progress(
@@ -1212,12 +1224,19 @@ def quick_check(
         console=console,
         transient=True,
     ) as progress:
-        task = progress.add_task("Running: Ping Test…", total=3)
-        for idx, test in enumerate(tests):
-            desc = ["Running: Ping Test…", "Running: Traceroute Test…", "Running: DNS Lookup…"][idx]
-            progress.update(task, description=desc)
-            results.append(test.run(target))
-            progress.advance(task, 1)
+        task = progress.add_task("Running: Ping, Traceroute, DNS…", total=len(tests_spec))
+
+        def _cb(completed: int, total: int) -> None:
+            progress.update(task, completed=completed)
+
+        batch_results = runner.run_batch(tests_spec, progress_callback=_cb)
+
+    # Flatten results in deterministic order: Ping, Traceroute, DNS
+    results = [
+        (batch_results.get("Ping Test") or [ping_test.run(target)])[0],
+        (batch_results.get("Traceroute Test") or [trace_test.run(target)])[0],
+        (batch_results.get("DNS Lookup") or [dns_test.run(target)])[0],
+    ]
 
     if output_format == "json":
         _output_results_json(results)
