@@ -336,6 +336,7 @@ def _run_interactive(
             )
 
             console.print(f"\n[bold green]✓ Results saved to:[/bold green] {test_run_dir}")
+            console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
 
             # Show network status again (right-bottom) after results
             print_network_status(console)
@@ -646,6 +647,8 @@ def ping(
         },
     )
 
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+
 
 @app.command()
 def traceroute(
@@ -697,6 +700,8 @@ def traceroute(
         },
     )
 
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+
 
 @app.command()
 def dns(
@@ -747,6 +752,8 @@ def dns(
             "system_info": system_info.model_dump(mode="json"),
         },
     )
+
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
 
 
 @app.command()
@@ -805,6 +812,8 @@ def ports(
         },
     )
 
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+
 
 @app.command(name="nmap-scan")
 def nmap_scan(
@@ -862,6 +871,8 @@ def nmap_scan(
         },
     )
 
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+
 
 @app.command(name="arp-scan")
 def arp_scan(
@@ -910,6 +921,8 @@ def arp_scan(
             "system_info": system_info.model_dump(mode="json"),
         },
     )
+
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
 
 
 @app.command(name="ping-sweep")
@@ -972,6 +985,8 @@ def ping_sweep(
             "system_info": system_info.model_dump(mode="json"),
         },
     )
+
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
 
 
 @app.command(name="report")
@@ -1048,6 +1063,8 @@ def quick_check(
             "system_info": system_info.model_dump(mode="json"),
         },
     )
+
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
 
 
 @app.command()
