@@ -1,0 +1,5 @@
+timestamp,test_name,target,metric,value,status,details
+2026-02-12T23:26:39.168999,Port Scan,1.1.1.1,open_ports,"53,80,443,8080",success,"Found 4 open port(s) out of 20 scanned on 1.1.1.1. Open: 53, 80, 443, 8080"
+2026-02-12T23:26:39.168999,Port Scan,1.1.1.1,closed_count,16,success,"Found 4 open port(s) out of 20 scanned on 1.1.1.1. Open: 53, 80, 443, 8080"
+2026-02-12T23:26:39.168999,Port Scan,1.1.1.1,total_ports,20,success,"Found 4 open port(s) out of 20 scanned on 1.1.1.1. Open: 53, 80, 443, 8080"
+2026-02-12T23:26:39.168999,Port Scan,1.1.1.1,open_count,4,success,"Found 4 open port(s) out of 20 scanned on 1.1.1.1. Open: 53, 80, 443, 8080"

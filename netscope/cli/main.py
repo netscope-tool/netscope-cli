@@ -149,6 +149,9 @@ def _run_interactive(
         console.print(
             "[dim]  Examples: 8.8.8.8, 1.1.1.1, google.com, example.com[/dim]"
         )
+        console.print(
+            "[dim]  Shortcuts: localhost, gateway, dns[/dim]"
+        )
         target = questionary.text(
             "Enter target IP/hostname:",
             validate=lambda x: len(x) > 0,
@@ -156,6 +159,9 @@ def _run_interactive(
 
         if not target:
             continue
+
+        # Resolve smart shortcuts
+        target = _resolve_target(target)
 
         # Create test run directory and helpers
         test_run_dir = config.create_test_run_dir(choice.lower().replace(" ", "_"))
@@ -477,6 +483,16 @@ def history(
     console.print(table)
 
 
+def _resolve_target(target: str) -> str:
+    """Resolve smart target shortcuts (localhost, gateway, dns) to actual targets."""
+    from netscope.cli.target_resolver import resolve_target_shortcut
+    resolved = resolve_target_shortcut(target)
+    if resolved:
+        console.print(f"[dim]Resolved '{target}' to: {resolved}[/dim]")
+        return resolved
+    return target
+
+
 def _first_run_welcome(output_dir: Path) -> None:
     """Show welcome message on first run and create sentinel file."""
     sentinel = Path.home() / ".netscope_first_run_done"
@@ -525,7 +541,7 @@ def show_main_menu() -> str:
 
 @app.command()
 def ping(
-    target: str = typer.Argument(..., help="Target IP or hostname"),
+    target: str = typer.Argument(..., help="Target IP or hostname (shortcuts: localhost, gateway, dns)"),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output",
@@ -548,6 +564,7 @@ def ping(
     """
     Run a ping test in non-interactive mode.
     """
+    target = _resolve_target(target)
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("ping_test")
     csv_handler = CSVHandler(test_run_dir / "results.csv")
@@ -575,7 +592,7 @@ def ping(
 
 @app.command()
 def traceroute(
-    target: str = typer.Argument(..., help="Target IP or hostname"),
+    target: str = typer.Argument(..., help="Target IP or hostname (shortcuts: localhost, gateway, dns)"),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output",
@@ -598,6 +615,7 @@ def traceroute(
     """
     Run a traceroute test in non-interactive mode.
     """
+    target = _resolve_target(target)
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("traceroute_test")
     csv_handler = CSVHandler(test_run_dir / "results.csv")
@@ -625,7 +643,7 @@ def traceroute(
 
 @app.command()
 def dns(
-    target: str = typer.Argument(..., help="Target hostname"),
+    target: str = typer.Argument(..., help="Target hostname (shortcuts: localhost, gateway, dns)"),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output",
@@ -648,6 +666,7 @@ def dns(
     """
     Run a DNS lookup test in non-interactive mode.
     """
+    target = _resolve_target(target)
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("dns_lookup")
     csv_handler = CSVHandler(test_run_dir / "results.csv")
@@ -675,7 +694,7 @@ def dns(
 
 @app.command()
 def ports(
-    target: str = typer.Argument(..., help="Target IP or hostname"),
+    target: str = typer.Argument(..., help="Target IP or hostname (shortcuts: localhost, gateway, dns)"),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output",
@@ -704,6 +723,7 @@ def ports(
     """
     Run a port scan in non-interactive mode (TCP connect, no nmap required).
     """
+    target = _resolve_target(target)
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("port_scan")
     csv_handler = CSVHandler(test_run_dir / "results.csv")
@@ -731,7 +751,7 @@ def ports(
 
 @app.command(name="quick-check")
 def quick_check(
-    target: str = typer.Argument(..., help="Target IP or hostname"),
+    target: str = typer.Argument(..., help="Target IP or hostname (shortcuts: localhost, gateway, dns)"),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output",
@@ -754,6 +774,7 @@ def quick_check(
     """
     Run all core tests (ping, traceroute, DNS) in sequence.
     """
+    target = _resolve_target(target)
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("quick_network_check")
     csv_handler = CSVHandler(test_run_dir / "results.csv")
@@ -779,6 +800,245 @@ def quick_check(
             "system_info": system_info.model_dump(mode="json"),
         },
     )
+
+
+@app.command()
+def glossary(
+    term: Optional[str] = typer.Argument(None, help="Term to look up (e.g., latency, dns, ports)"),
+):
+    """
+    Show glossary of networking terms. Use without a term to list all available terms.
+    """
+    from netscope.cli.glossary_content import get_glossary_term, list_all_terms
+    from rich.panel import Panel
+
+    if term is None:
+        terms = list_all_terms()
+        console.print("\n[bold cyan]Available glossary terms:[/bold cyan]\n")
+        for t in terms:
+            console.print(f"  • [cyan]{t}[/cyan]")
+        console.print("\n[dim]Use: netscope glossary <term> to see details[/dim]\n")
+        return
+
+    result = get_glossary_term(term)
+    if result is None:
+        console.print(f"\n[red]Term '{term}' not found.[/red]")
+        console.print("[dim]Use 'netscope glossary' (no term) to see all available terms.[/dim]\n")
+        return
+
+    term_name, content = result
+    console.print()
+    console.print(Panel(content, title=f"Glossary: {term_name}", border_style="cyan", expand=False))
+    console.print()
+
+
+@app.command()
+def troubleshoot(
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output directory for results",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output",
+    ),
+):
+    """
+    Interactive troubleshooting wizard. Answer questions to get suggested tests.
+    """
+    from netscope.cli.formatters import format_test_result, format_quick_check_summary
+    from netscope.modules.connectivity import PingTest, TracerouteTest
+    from netscope.modules.dns import DNSTest
+
+    console.print("\n[bold cyan]🔧 Troubleshooting Wizard[/bold cyan]\n")
+    console.print("Tell me what's wrong, and I'll suggest tests to run.\n")
+
+    problem = questionary.select(
+        "What's the problem?",
+        choices=[
+            Choice("Website or server is down / not responding", value="down"),
+            Choice("Connection is slow", value="slow"),
+            Choice("Can't reach a specific hostname", value="hostname"),
+            Choice("Can't connect to a service (port)", value="port"),
+            Choice("General connectivity issues", value="general"),
+            Choice("Exit", value="exit"),
+        ],
+    ).ask()
+
+    if problem == "exit" or not problem:
+        return
+
+    config, logger, detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("troubleshoot")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+
+    # Get target
+    console.print("\n[dim]Examples: 8.8.8.8, google.com, example.com[/dim]")
+    console.print("[dim]Shortcuts: localhost, gateway, dns[/dim]")
+    target = questionary.text(
+        "Enter target IP or hostname:",
+        validate=lambda x: len(x) > 0,
+    ).ask()
+
+    if not target:
+        return
+
+    # Resolve smart shortcuts
+    target = _resolve_target(target)
+
+    suggestions = []
+    tests_to_run = []
+
+    if problem == "down":
+        suggestions.append("Running Quick Network Check to diagnose reachability...")
+        tests_to_run = ["quick"]
+    elif problem == "slow":
+        suggestions.append("Running Ping and Traceroute to find where slowness occurs...")
+        tests_to_run = ["ping", "traceroute"]
+    elif problem == "hostname":
+        suggestions.append("Running DNS lookup to check name resolution...")
+        tests_to_run = ["dns"]
+    elif problem == "port":
+        suggestions.append("Running Port Scan to check if service is listening...")
+        tests_to_run = ["port"]
+    else:  # general
+        suggestions.append("Running Quick Network Check for overall diagnosis...")
+        tests_to_run = ["quick"]
+
+    console.print("\n[bold]Suggested tests:[/bold]")
+    for s in suggestions:
+        console.print(f"  • {s}")
+
+    if not questionary.confirm("\nRun suggested tests?", default=True).ask():
+        return
+
+    console.print()
+
+    results = []
+    if "quick" in tests_to_run:
+        test = PingTest(executor, csv_handler)
+        results.append(test.run(target))
+        test = TracerouteTest(executor, csv_handler)
+        results.append(test.run(target))
+        test = DNSTest(executor, csv_handler)
+        results.append(test.run(target))
+        format_quick_check_summary(results, console)
+    else:
+        for test_name in tests_to_run:
+            if test_name == "ping":
+                test = PingTest(executor, csv_handler)
+                results.append(test.run(target))
+            elif test_name == "traceroute":
+                test = TracerouteTest(executor, csv_handler)
+                results.append(test.run(target))
+            elif test_name == "dns":
+                test = DNSTest(executor, csv_handler)
+                results.append(test.run(target))
+            elif test_name == "port":
+                from netscope.modules.ports import PortScanTest
+                test = PortScanTest(executor, csv_handler)
+                results.append(test.run(target))
+
+        for result in results:
+            format_test_result(result, console)
+
+    if results:
+        config.save_metadata(
+            test_run_dir,
+            {
+                "test_type": "Troubleshoot",
+                "target": target,
+                "problem": problem,
+                "status": results[0].status,
+                "system_info": system_info.model_dump(mode="json"),
+            },
+        )
+        console.print(f"\n[bold green]✓ Results saved to:[/bold green] {test_run_dir}")
+
+
+@app.command()
+def examples():
+    """
+    Show common usage examples and scenarios.
+    """
+    from rich.panel import Panel
+    from rich.table import Table
+
+    console.print("\n[bold cyan]📚 NetScope Examples[/bold cyan]\n")
+
+    examples_table = Table(show_header=True, box=None)
+    examples_table.add_column("Scenario", style="cyan", width=30)
+    examples_table.add_column("Command", style="white")
+    examples_table.add_column("What it does", style="dim")
+
+    examples_data = [
+        (
+            "Check if website is down",
+            "netscope quick-check google.com",
+            "Runs ping, traceroute, and DNS to diagnose",
+        ),
+        (
+            "Measure latency to server",
+            "netscope ping 8.8.8.8",
+            "Tests reachability and shows min/avg/max latency",
+        ),
+        (
+            "Find slow hops",
+            "netscope traceroute example.com",
+            "Shows path and delay at each router",
+        ),
+        (
+            "Check DNS resolution",
+            "netscope dns google.com",
+            "Resolves hostname to IP addresses (IPv4/IPv6)",
+        ),
+        (
+            "Scan for open ports",
+            "netscope ports 192.168.1.1 --preset top20",
+            "Checks which TCP ports are open",
+        ),
+        (
+            "Interactive menu",
+            "netscope",
+            "Launches menu to choose tests interactively",
+        ),
+        (
+            "Learn about a test",
+            "netscope explain ping",
+            "Shows what ping does and how to interpret results",
+        ),
+        (
+            "Look up a term",
+            "netscope glossary latency",
+            "Explains networking terms",
+        ),
+        (
+            "Troubleshoot a problem",
+            "netscope troubleshoot",
+            "Wizard guides you through diagnosis",
+        ),
+        (
+            "Save results to custom dir",
+            "netscope ping 8.8.8.8 -o ./my-results",
+            "Outputs results to specified directory",
+        ),
+        (
+            "JSON output for scripts",
+            "netscope ping 8.8.8.8 --format json",
+            "Outputs machine-readable JSON",
+        ),
+    ]
+
+    for scenario, cmd, desc in examples_data:
+        examples_table.add_row(scenario, f"[bold]{cmd}[/bold]", desc)
+
+    console.print(examples_table)
+    console.print()
 
 
 if __name__ == "__main__":

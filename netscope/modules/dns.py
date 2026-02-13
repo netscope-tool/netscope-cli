@@ -34,7 +34,15 @@ class DNSTest(BaseTest):
         if result.success and metrics.get('resolved', False):
             status = "success"
             ip_addresses = metrics.get('ip_addresses', [])
-            summary = f"Resolved {target} to {len(ip_addresses)} address(es): {', '.join(ip_addresses[:3])}"
+            ipv4_count = metrics.get('ipv4_count', 0)
+            ipv6_count = metrics.get('ipv6_count', 0)
+            addr_types = []
+            if ipv4_count > 0:
+                addr_types.append(f"{ipv4_count} IPv4")
+            if ipv6_count > 0:
+                addr_types.append(f"{ipv6_count} IPv6")
+            type_str = " + ".join(addr_types) if addr_types else ""
+            summary = f"Resolved {target} to {len(ip_addresses)} address(es) ({type_str}): {', '.join(ip_addresses[:3])}"
         elif result.success:
             status = "warning"
             summary = f"Could not resolve {target}"
@@ -60,32 +68,60 @@ class DNSTest(BaseTest):
         return test_result
     
     def parse_output(self, output: str, os_type: str) -> Dict[str, Any]:
-        """Parse DNS lookup output."""
+        """Parse DNS lookup output. Detects both IPv4 (A) and IPv6 (AAAA) records."""
         metrics = {}
         ip_addresses = []
+        ipv4_addresses = []
+        ipv6_addresses = []
+        
+        # IPv4 regex: 4 groups of 1-3 digits
+        ipv4_pattern = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+        # IPv6 regex: simplified - matches common formats (e.g., 2001:db8::1, ::1)
+        ipv6_pattern = re.compile(r'\b(?:[0-9a-fA-F]{1,4}:){1,7}[0-9a-fA-F]{1,4}\b|::1|\b::\b')
         
         if os_type == "Windows":
             # Parse nslookup output
-            # Look for lines like "Address:  192.168.1.1"
+            # Look for lines like "Address:  192.168.1.1" or "AAAA Record: 2001:db8::1"
             for line in output.split('\n'):
                 if 'Address' in line and ':' in line:
                     parts = line.split(':')
                     if len(parts) > 1:
                         ip = parts[1].strip()
-                        # Validate it's an IP address
-                        if re.match(r'\d+\.\d+\.\d+\.\d+', ip):
+                        # Check IPv4
+                        if ipv4_pattern.match(ip):
                             ip_addresses.append(ip)
+                            ipv4_addresses.append(ip)
+                        # Check IPv6
+                        elif ipv6_pattern.search(ip):
+                            ip_addresses.append(ip)
+                            ipv6_addresses.append(ip)
         else:
-            # Parse dig output (simpler - just IP addresses)
+            # Parse dig output - check for A and AAAA records
+            # For A records: dig +short returns IPv4
+            # For AAAA records: dig +short AAAA returns IPv6
+            # We'll also check if the output contains IPv6 patterns
             for line in output.strip().split('\n'):
                 line = line.strip()
+                if not line:
+                    continue
                 # Match IPv4 addresses
-                if re.match(r'^\d+\.\d+\.\d+\.\d+$', line):
+                if ipv4_pattern.match(line):
                     ip_addresses.append(line)
+                    ipv4_addresses.append(line)
+                # Match IPv6 addresses
+                elif ipv6_pattern.search(line):
+                    ip_addresses.append(line)
+                    ipv6_addresses.append(line)
         
         metrics['ip_addresses'] = ip_addresses
+        metrics['ipv4_addresses'] = ipv4_addresses
+        metrics['ipv6_addresses'] = ipv6_addresses
         metrics['resolved'] = len(ip_addresses) > 0
         metrics['ip_count'] = len(ip_addresses)
+        metrics['ipv4_count'] = len(ipv4_addresses)
+        metrics['ipv6_count'] = len(ipv6_addresses)
+        metrics['has_ipv4'] = len(ipv4_addresses) > 0
+        metrics['has_ipv6'] = len(ipv6_addresses) > 0
         
         return metrics
     
