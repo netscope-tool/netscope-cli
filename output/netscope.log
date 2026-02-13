@@ -144,3 +144,30 @@
 2026-02-13 11:56:47 | INFO     | netscope.core.executor:run_command:54 | Executing command: dig +short 8.8.8.8
 2026-02-13 11:56:48 | INFO     | netscope.core.executor:run_command:75 | Command completed: dig +short 8.8.8.8 (return code: 0, duration: 0.10s)
 2026-02-13 11:56:48 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_count=0
+2026-02-13 12:18:32 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 12:18:32 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 12:18:32 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_121832_quick_network_check/results.csv
+2026-02-13 12:18:32 | INFO     | netscope.core.executor:run_command:54 | Executing command: ping -c 4 8.8.8.8
+2026-02-13 12:18:35 | INFO     | netscope.core.executor:run_command:75 | Command completed: ping -c 4 8.8.8.8 (return code: 0, duration: 3.07s)
+2026-02-13 12:18:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packet_loss=0
+2026-02-13 12:18:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: min_latency=30.53
+2026-02-13 12:18:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: avg_latency=40.983
+2026-02-13 12:18:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: max_latency=51.471
+2026-02-13 12:18:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: mdev_latency=10.055
+2026-02-13 12:18:35 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packets_received=4
+2026-02-13 12:18:35 | INFO     | netscope.core.executor:run_command:54 | Executing command: traceroute -n -m 15 8.8.8.8
+2026-02-13 12:18:51 | INFO     | netscope.core.executor:run_command:75 | Command completed: traceroute -n -m 15 8.8.8.8 (return code: 0, duration: 15.67s)
+2026-02-13 12:18:51 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: hop_count=7
+2026-02-13 12:18:51 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: destination_reached=True
+2026-02-13 12:18:51 | INFO     | netscope.core.executor:run_command:54 | Executing command: dig +short 8.8.8.8
+2026-02-13 12:18:51 | INFO     | netscope.core.executor:run_command:75 | Command completed: dig +short 8.8.8.8 (return code: 0, duration: 0.11s)
+2026-02-13 12:18:51 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: ip_count=0
+2026-02-13 12:39:43 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 12:39:43 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 12:40:44 | INFO     | netscope.cli.main:_run_interactive:171 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_124044_traceroute_test
+2026-02-13 12:40:44 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_124044_traceroute_test/results.csv
+2026-02-13 12:40:44 | INFO     | netscope.core.executor:run_command:54 | Executing command: traceroute -n -m 15 google.com
+2026-02-13 12:40:59 | INFO     | netscope.core.executor:run_command:75 | Command completed: traceroute -n -m 15 google.com (return code: 0, duration: 15.57s)
+2026-02-13 12:40:59 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: hop_count=8
+2026-02-13 12:40:59 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: destination_reached=True
+2026-02-13 12:41:48 | INFO     | netscope.cli.main:_run_interactive:355 | NetScope exited normally

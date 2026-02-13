@@ -630,7 +630,17 @@ def ping(
 
     console.print(f"\n[bold cyan]Running Ping Test on {target}...[/bold cyan]\n")
     test = PingTest(executor, csv_handler)
-    result = test.run(target)
+    _result_holder: list = []
+
+    def _run() -> None:
+        _result_holder.append(test.run(target))
+
+    _t = threading.Thread(target=_run)
+    _t.start()
+    with Live(Spinner("dots", text="[dim]Pinging…[/dim]"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
 
     if output_format == "json":
         _output_results_json(result)
@@ -647,7 +657,7 @@ def ping(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command()
@@ -683,7 +693,17 @@ def traceroute(
 
     console.print(f"\n[bold cyan]Running Traceroute Test on {target}...[/bold cyan]\n")
     test = TracerouteTest(executor, csv_handler)
-    result = test.run(target)
+    _result_holder = []
+
+    def _run() -> None:
+        _result_holder.append(test.run(target))
+
+    _t = threading.Thread(target=_run)
+    _t.start()
+    with Live(Spinner("dots", text="[dim]Tracing route…[/dim]"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
 
     if output_format == "json":
         _output_results_json(result)
@@ -700,7 +720,7 @@ def traceroute(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command()
@@ -736,7 +756,17 @@ def dns(
 
     console.print(f"\n[bold cyan]Running DNS Lookup on {target}...[/bold cyan]\n")
     test = DNSTest(executor, csv_handler)
-    result = test.run(target)
+    _result_holder = []
+
+    def _run() -> None:
+        _result_holder.append(test.run(target))
+
+    _t = threading.Thread(target=_run)
+    _t.start()
+    with Live(Spinner("dots", text="[dim]Resolving DNS…[/dim]"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
 
     if output_format == "json":
         _output_results_json(result)
@@ -753,7 +783,7 @@ def dns(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command()
@@ -795,7 +825,17 @@ def ports(
 
     console.print(f"\n[bold cyan]Running Port Scan on {target} (preset: {preset})...[/bold cyan]\n")
     test = PortScanTest(executor, csv_handler)
-    result = test.run(target, preset=preset)
+    _result_holder = []
+
+    def _run() -> None:
+        _result_holder.append(test.run(target, preset=preset))
+
+    _t = threading.Thread(target=_run)
+    _t.start()
+    with Live(Spinner("dots", text="[dim]Scanning ports…[/dim]"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
 
     if output_format == "json":
         _output_results_json(result)
@@ -812,7 +852,7 @@ def ports(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command(name="nmap-scan")
@@ -854,7 +894,17 @@ def nmap_scan(
 
     console.print(f"\n[bold cyan]Running Nmap Scan on {target}...[/bold cyan]\n")
     test = NmapScanTest(executor, csv_handler)
-    result = test.run(target, ports=ports)
+    _result_holder = []
+
+    def _run() -> None:
+        _result_holder.append(test.run(target, ports=ports))
+
+    _t = threading.Thread(target=_run)
+    _t.start()
+    with Live(Spinner("dots", text="[dim]Running nmap scan…[/dim]"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
 
     if output_format == "json":
         _output_results_json(result)
@@ -871,7 +921,7 @@ def nmap_scan(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command(name="arp-scan")
@@ -905,7 +955,17 @@ def arp_scan(
 
     console.print(f"\n[bold cyan]Running ARP Scan...[/bold cyan]\n")
     test = ARPScanTest(executor, csv_handler)
-    result = test.run("local")
+    _result_holder = []
+
+    def _run() -> None:
+        _result_holder.append(test.run("local"))
+
+    _t = threading.Thread(target=_run)
+    _t.start()
+    with Live(Spinner("dots", text="[dim]Scanning ARP table…[/dim]"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
 
     if output_format == "json":
         _output_results_json(result)
@@ -922,7 +982,7 @@ def arp_scan(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command(name="ping-sweep")
@@ -969,7 +1029,17 @@ def ping_sweep(
 
     console.print(f"\n[bold cyan]Running Ping Sweep on {cidr}...[/bold cyan]\n")
     test = PingSweepTest(executor, csv_handler)
-    result = test.run(cidr, max_workers=max_workers, timeout=timeout)
+    _result_holder = []
+
+    def _run() -> None:
+        _result_holder.append(test.run(cidr, max_workers=max_workers, timeout=timeout))
+
+    _t = threading.Thread(target=_run)
+    _t.start()
+    with Live(Spinner("dots", text="[dim]Ping sweeping…[/dim]"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
 
     if output_format == "json":
         _output_results_json(result)
@@ -986,11 +1056,11 @@ def ping_sweep(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
-@app.command(name="report")
-def report_cmd(
+@app.command(name="report-html")
+def report_html_cmd(
     run_dir: Path = typer.Argument(..., help="Path to a single NetScope run directory"),
     output_file: Optional[Path] = typer.Option(
         None,
@@ -1010,6 +1080,46 @@ def report_cmd(
 
     html_path = generate_html_report(run_dir, output_file)
     console.print(f"\n[bold green]✓ HTML report generated:[/bold green] {html_path}\n")
+
+
+@app.command(name="report")
+def report_cmd(
+    run_dir: Path = typer.Argument(..., help="Path to a single NetScope run directory"),
+    html: bool = typer.Option(
+        True,
+        "--html/--no-html",
+        help="Generate HTML report (default: on)",
+    ),
+    notebook: bool = typer.Option(
+        True,
+        "--notebook/--no-notebook",
+        help="Generate Jupyter notebook report (default: on)",
+    ),
+):
+    """
+    Generate all available reports (HTML and notebook) for a single run directory.
+    """
+    from netscope.report.html_report import generate_html_report
+    from netscope.report.notebook_report import generate_notebook_report
+
+    if not run_dir.exists() or not run_dir.is_dir():
+        console.print(f"[red]Run directory not found:[/red] {run_dir}")
+        raise typer.Exit(1)
+
+    generated: list[str] = []
+    if html:
+        html_path = generate_html_report(run_dir)
+        generated.append(str(html_path))
+    if notebook:
+        nb_path = generate_notebook_report(run_dir)
+        generated.append(str(nb_path))
+
+    if not generated:
+        console.print("[yellow]No reports were generated (both --no-html and --no-notebook were set).[/yellow]")
+    else:
+        console.print("\n[bold green]✓ Reports generated:[/bold green]")
+        for path in generated:
+            console.print(f"  [dim]{path}[/dim]")
 
 
 @app.command(name="report-notebook")
@@ -1069,7 +1179,22 @@ def quick_check(
     console.print(f"\n[bold cyan]Running Quick Network Check on {target}...[/bold cyan]\n")
 
     tests = [PingTest(executor, csv_handler), TracerouteTest(executor, csv_handler), DNSTest(executor, csv_handler)]
-    results = [test.run(target) for test in tests]
+    results = []
+    from rich.progress import Progress, SpinnerColumn, TextColumn, TaskProgressColumn
+
+    with Progress(
+        TextColumn("[dim]{task.description}[/dim]"),
+        SpinnerColumn(),
+        TaskProgressColumn(),
+        console=console,
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Running: Ping Test…", total=3)
+        for idx, test in enumerate(tests):
+            desc = ["Running: Ping Test…", "Running: Traceroute Test…", "Running: DNS Lookup…"][idx]
+            progress.update(task, description=desc)
+            results.append(test.run(target))
+            progress.advance(task, 1)
 
     if output_format == "json":
         _output_results_json(results)
@@ -1087,7 +1212,7 @@ def quick_check(
         },
     )
 
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command()

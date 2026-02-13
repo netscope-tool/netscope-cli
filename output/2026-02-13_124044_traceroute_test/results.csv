@@ -1,0 +1,3 @@
+timestamp,test_name,target,metric,value,status,details
+2026-02-13T12:40:44.403357,Traceroute Test,google.com,hop_count,8,success,Traced route to google.com in 8 hops
+2026-02-13T12:40:44.403357,Traceroute Test,google.com,destination_reached,True,success,Traced route to google.com in 8 hops
