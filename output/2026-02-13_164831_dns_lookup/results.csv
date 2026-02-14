@@ -1,2 +1,0 @@
-timestamp,test_name,target,metric,value,status,details
-2026-02-13T16:48:31.092713,DNS Lookup,4.149.145.181,ip_count,0,warning,Could not resolve 4.149.145.181

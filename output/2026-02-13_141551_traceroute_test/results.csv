@@ -1,3 +1,0 @@
-timestamp,test_name,target,metric,value,status,details
-2026-02-13T14:15:51.030952,Traceroute Test,8.8.8.8,hop_count,7,success,Traced route to 8.8.8.8 in 7 hops
-2026-02-13T14:15:51.030952,Traceroute Test,8.8.8.8,destination_reached,True,success,Traced route to 8.8.8.8 in 7 hops

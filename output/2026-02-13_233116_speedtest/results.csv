@@ -1,2 +1,0 @@
-timestamp,test_name,target,metric,value,status,details
-2026-02-13T23:31:16.268281,bandwidth_test,auto,error,speedtest-cli not installed. Install with: pip install speedtest-cli,failure,Bandwidth test failed: speedtest-cli not installed. Install with: pip install speedtest-cli

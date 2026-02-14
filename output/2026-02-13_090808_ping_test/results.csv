@@ -1,7 +1,0 @@
-timestamp,test_name,target,metric,value,status,details
-2026-02-13T09:08:08.094845,Ping Test,google.com,packet_loss,0,success,Host google.com is reachable. Latency min/avg/max: 29.9/63.3/119.5 ms
-2026-02-13T09:08:08.094845,Ping Test,google.com,min_latency,29.877,success,Host google.com is reachable. Latency min/avg/max: 29.9/63.3/119.5 ms
-2026-02-13T09:08:08.094845,Ping Test,google.com,avg_latency,63.254,success,Host google.com is reachable. Latency min/avg/max: 29.9/63.3/119.5 ms
-2026-02-13T09:08:08.094845,Ping Test,google.com,max_latency,119.542,success,Host google.com is reachable. Latency min/avg/max: 29.9/63.3/119.5 ms
-2026-02-13T09:08:08.094845,Ping Test,google.com,mdev_latency,36.01,success,Host google.com is reachable. Latency min/avg/max: 29.9/63.3/119.5 ms
-2026-02-13T09:08:08.094845,Ping Test,google.com,packets_received,4,success,Host google.com is reachable. Latency min/avg/max: 29.9/63.3/119.5 ms

@@ -1,7 +1,0 @@
-timestamp,test_name,target,metric,value,status,details
-2026-02-13T22:41:14.732717,Ping Test,1.1.1.1,packet_loss,0,success,Host 1.1.1.1 is reachable. Latency min/avg/max: 78.2/207.2/293.1 ms
-2026-02-13T22:41:14.732717,Ping Test,1.1.1.1,min_latency,78.191,success,Host 1.1.1.1 is reachable. Latency min/avg/max: 78.2/207.2/293.1 ms
-2026-02-13T22:41:14.732717,Ping Test,1.1.1.1,avg_latency,207.224,success,Host 1.1.1.1 is reachable. Latency min/avg/max: 78.2/207.2/293.1 ms
-2026-02-13T22:41:14.732717,Ping Test,1.1.1.1,max_latency,293.073,success,Host 1.1.1.1 is reachable. Latency min/avg/max: 78.2/207.2/293.1 ms
-2026-02-13T22:41:14.732717,Ping Test,1.1.1.1,mdev_latency,80.03,success,Host 1.1.1.1 is reachable. Latency min/avg/max: 78.2/207.2/293.1 ms
-2026-02-13T22:41:14.732717,Ping Test,1.1.1.1,packets_received,4,success,Host 1.1.1.1 is reachable. Latency min/avg/max: 78.2/207.2/293.1 ms

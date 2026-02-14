@@ -1,9 +1,0 @@
-timestamp,test_name,target,metric,value,status,details
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.1,device_info,D4:13:F8:1B:5F:C0,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.2,device_info,20:47:47:7F:9A:F2,success,"Vendor: TP-Link Corporation, Type: Router/AP, Interface: en0"
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.30,device_info,BC:24:11:E7:FE:40,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.48,device_info,BC:24:11:34:AF:76,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.146,device_info,FA:C4:86:AD:1E:C5,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.151,device_info,3A:67:CC:58:55:40,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.217,device_info,9A:E4:8E:EA:5E:38,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T16:49:43.372499,ARP Scan (Enhanced),192.168.1.255,device_info,FF:FF:FF:FF:FF:FF,success,"Vendor: Unknown, Type: Unknown, Interface: en0"

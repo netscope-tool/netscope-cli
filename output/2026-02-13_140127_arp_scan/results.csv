@@ -1,6 +1,0 @@
-timestamp,test_name,target,metric,value,status,details
-2026-02-13T14:01:27.604726,ARP Scan (Enhanced),192.168.1.1,device_info,D4:13:F8:1B:5F:C0,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T14:01:27.604726,ARP Scan (Enhanced),192.168.1.59,device_info,86:44:F0:14:14:9E,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T14:01:27.604726,ARP Scan (Enhanced),192.168.1.142,device_info,38:F9:D3:66:EE:76,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T14:01:27.604726,ARP Scan (Enhanced),192.168.1.151,device_info,3A:67:CC:58:55:40,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
-2026-02-13T14:01:27.604726,ARP Scan (Enhanced),192.168.1.255,device_info,FF:FF:FF:FF:FF:FF,success,"Vendor: Unknown, Type: Unknown, Interface: en0"
