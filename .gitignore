@@ -11,6 +11,9 @@ __pycache__/
 dist/
 build/
 
+# Test run results (logs, CSV, reports) — do not commit
+output/
+
 # IDE
 .idea/
 .vscode/
