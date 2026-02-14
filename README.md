@@ -1,6 +1,41 @@
 # NetScope - Network Diagnostics & Reporting Tool
 
+[![PyPI version](https://badge.fury.io/py/netscope-cli.svg)](https://pypi.org/project/netscope-cli/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
 A comprehensive CLI tool for network diagnostics, testing, and reporting.
+
+## Install
+
+**From PyPI (recommended):**
+
+```bash
+pip install netscope-cli
+```
+
+On many systems it’s better to use a virtual environment so you don’t install into the system Python. Create and activate one first, then install:
+
+- **macOS / Linux (bash/zsh):**
+  ```bash
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install netscope-cli
+  ```
+- **Windows – Command Prompt:**
+  ```cmd
+  python -m venv .venv
+  .venv\Scripts\activate.bat
+  pip install netscope-cli
+  ```
+- **Windows – PowerShell:**
+  ```powershell
+  python -m venv .venv
+  .venv\Scripts\Activate.ps1
+  pip install netscope-cli
+  ```
+
+Optional features (nmap, speedtest, etc.):  
+`pip install netscope-cli[security]` · `pip install netscope-cli[bandwidth]` · `pip install netscope-cli[all]`
 
 ## Features
 
@@ -20,7 +55,9 @@ For a deeper guide, see:
 - `docs/manual.md` – concepts, tests, interpreting results, reports.
 - `docs/cli-reference.md` – full command and option reference.
 
-## Getting started
+## Development / install from source
+
+Use this if you want to hack on the code or run tests.
 
 ### Prerequisites
 
@@ -29,23 +66,20 @@ For a deeper guide, see:
 
 ### 1. Clone the repository
 
-Clone the repo and go into the project directory. The folder name depends on how you cloned (e.g. `netscope-cli` if you cloned that repo).
-
 ```bash
 git clone https://github.com/netscope-tool/netscope-cli.git
 cd netscope-cli
 ```
 
-**Important:** All following commands must be run from this project directory (the one that contains `setup.py`, `requirements.txt`, and the `netscope` folder).
+All following commands assume you are in this project directory (the one that contains `pyproject.toml`, `setup.py`, and the `netscope` folder).
 
 ### 2. Create and activate a virtual environment
 
-Installing packages **system‑wide** can fail on macOS/Homebrew and some Linux setups with an `externally-managed-environment` error. Use a **virtual environment** in the project directory.
+Installing packages **system-wide** can fail on macOS/Homebrew and some Linux setups with an `externally-managed-environment` error. Use a **virtual environment** in the project directory.
 
 **macOS / Linux (Terminal, bash/zsh):**
 
 ```bash
-# From the project directory (e.g. ~/.../netscope-cli)
 python3 -m venv .venv
 source .venv/bin/activate
 ```
@@ -53,7 +87,6 @@ source .venv/bin/activate
 **Windows – Command Prompt (cmd):**
 
 ```cmd
-REM From the project directory (e.g. C:\Users\You\netscope-cli)
 python -m venv .venv
 .venv\Scripts\activate.bat
 ```
@@ -61,21 +94,23 @@ python -m venv .venv
 **Windows – PowerShell:**
 
 ```powershell
-# From the project directory (e.g. C:\Users\You\netscope-cli)
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-You should see `(.venv)` (or `.venv` on Windows) in your prompt. If you open a new terminal later, **go back into the project directory and activate the venv again** before running `netscope`.
+You should see `(.venv)` in your prompt. If you open a new terminal later, **cd into the project directory and activate the venv again** before running `netscope` or tests.
 
-### 3. Install dependencies and NetScope
+### 3. Install in editable mode
 
-With the virtual environment **activated** and from the **project directory**:
+With the virtual environment **activated**:
 
 ```bash
 pip install -r requirements.txt
 pip install -e .
 ```
+
+For development tools (pytest, black, ruff, etc.):  
+`pip install -e ".[dev]"`
 
 After this, the `netscope` command is available while the venv is active.
 
@@ -105,6 +140,7 @@ You’ll see a header, system information, and then a menu where you can choose:
 - Port Scan  
 - Nmap Scan (if `nmap` is installed)  
 - ARP Scan  
+- Speedtest (optional; will prompt to install `speedtest-cli` if missing)  
 - Ping Sweep  
 - Exit
 
@@ -133,6 +169,10 @@ netscope nmap-scan example.com
 
 # ARP scan (local devices)
 netscope arp-scan
+
+# Speedtest (download/upload; list servers: netscope speedtest --list)
+netscope speedtest
+netscope speedtest --server 12345
 
 # Ping sweep over a small CIDR
 netscope ping-sweep 192.168.1.0/24
@@ -194,13 +234,13 @@ pytest tests/ -v
 
 ## Distribution
 
-- **PyPI** (after release): `pip install netscope-cli`
+- **PyPI**: `pip install netscope-cli` (see [Install](#install) above)
 - **Docker**: From the project root, `docker build -t netscope-cli .` then  
   `docker run --rm netscope-cli --version` or `docker run --rm -v $(pwd)/output:/data netscope-cli ping 8.8.8.8`
-- **Homebrew**: A formula template is in `netscope.rb`; after the first PyPI release, update the `sha256` and use  
-  `brew install --build-from-source ./netscope.rb` or add to a tap. See `DISTRIBUTION_GUIDE.md`.
+- **Homebrew**: A formula template is in `netscope.rb`; update the `sha256` and use  
+  `brew install --build-from-source ./netscope.rb` or add to a tap. See [DISTRIBUTION_GUIDE.md](DISTRIBUTION_GUIDE.md).
 
-Version is defined in `netscope/__init__.py` and `pyproject.toml`; keep them in sync for releases.
+Version is defined in `pyproject.toml`, `setup.py`, and optionally `netscope/__version__.py`; keep them in sync for releases.
 
 ## Requirements
 
@@ -223,6 +263,14 @@ output/
     └── raw_output/
 ```
 
+## Contributing
+
+We welcome contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up your environment (including a virtual environment on your OS), run tests, and submit changes.
+
+## Security
+
+To report a security vulnerability, please see [SECURITY.md](SECURITY.md). Do not report security issues in the public issue tracker.
+
 ## License
 
-MIT License - See LICENSE file for details
+MIT License – see [LICENSE](LICENSE) for details.

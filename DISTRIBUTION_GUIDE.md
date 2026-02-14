@@ -7,12 +7,13 @@ This guide provides comprehensive instructions for distributing NetScope CLI as 
 1. [Package Structure](#package-structure)
 2. [Local Development Installation](#local-development-installation)
 3. [Building Distribution Packages](#building-distribution-packages)
-4. [Publishing to PyPI](#publishing-to-pypi)
-5. [Platform-Specific Installers](#platform-specific-installers)
-6. [Homebrew Formula](#homebrew-formula)
-7. [Docker Distribution](#docker-distribution)
-8. [Auto-Update Mechanism](#auto-update-mechanism)
-9. [Version Management](#version-management)
+4. [Before Publishing to PyPI](#before-publishing-to-pypi)
+5. [Publishing to PyPI](#publishing-to-pypi)
+6. [Platform-Specific Installers](#platform-specific-installers)
+7. [Homebrew Formula](#homebrew-formula)
+8. [Docker Distribution](#docker-distribution)
+9. [Auto-Update Mechanism](#auto-update-mechanism)
+10. [Version Management](#version-management)
 
 ---
 
@@ -26,6 +27,8 @@ netscope-cli/
 ├── setup.py                # Legacy setup (for compatibility)
 ├── MANIFEST.in             # Package file inclusion rules
 ├── README.md               # Package description
+├── CONTRIBUTING.md         # Contribution guide (venv, tests, PRs)
+├── SECURITY.md             # Vulnerability reporting
 ├── CHANGELOG.md            # Version history
 ├── LICENSE                 # MIT License
 ├── requirements.txt        # Dependencies
@@ -61,10 +64,14 @@ netscope-cli/
    cd netscope-cli
    ```
 
-2. **Create virtual environment** (recommended):
+2. **Create virtual environment** (recommended). For OS-specific commands (macOS/Linux, Windows cmd, Windows PowerShell), see [README.md](README.md#development--install-from-source) or [CONTRIBUTING.md](CONTRIBUTING.md#2-create-and-activate-a-virtual-environment).
    ```bash
+   # macOS / Linux
    python3 -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   source .venv/bin/activate
+
+   # Windows cmd: python -m venv .venv  then  .venv\Scripts\activate.bat
+   # Windows PowerShell: python -m venv .venv  then  .venv\Scripts\Activate.ps1
    ```
 
 3. **Install in editable mode**:
@@ -129,6 +136,48 @@ twine check dist/*
 # Install from wheel to test
 pip install dist/netscope_cli-1.0.0-py3-none-any.whl
 ```
+
+---
+
+## Before Publishing to PyPI
+
+Complete these steps so your first upload goes smoothly.
+
+### 1. Required files
+
+- **LICENSE** – Must exist (e.g. MIT). `MANIFEST.in` includes it; the build will fail if it’s missing.
+- **README.md** – Used as the project description on PyPI. Already required by `pyproject.toml`.
+- **CHANGELOG.md** – Referenced in `pyproject.toml` URLs; good practice and expected by many users.
+
+### 2. Package name and URLs
+
+- **Name**: The project uses `netscope-cli` in `pyproject.toml`. Check that this name is still free on [PyPI](https://pypi.org/project/netscope-cli/) (or pick another and update `pyproject.toml` and `setup.py`).
+- **URLs** in `pyproject.toml`: Update `Homepage`, `Repository`, `Bug Tracker`, and `Documentation` if your repo is not actually at `https://github.com/netscope-tool/netscope-cli`. Broken links look unmaintained.
+
+### 3. Version and changelog
+
+- Set the version in **one place** and keep the rest in sync: `pyproject.toml` → `version`, `setup.py` → `version`, and optionally `netscope/__init__.py` → `__version__`.
+- Ensure **CHANGELOG.md** has an entry for the version you’re publishing (e.g. `[1.0.0]`).
+
+### 4. Local build and smoke test
+
+```bash
+# From project root
+rm -rf dist/ build/ *.egg-info
+python -m build
+twine check dist/*
+
+# Install the wheel and run a quick check
+pip install dist/netscope_cli-*.whl
+netscope --version
+netscope --help
+```
+
+If anything fails here, fix it before uploading to PyPI.
+
+### 5. TestPyPI first (strongly recommended)
+
+Use [TestPyPI](https://test.pypi.org/) for your first upload. That way you can run `pip install --index-url https://test.pypi.org/simple/ netscope-cli` and confirm install + basic usage without affecting the real PyPI index. Only then upload to production PyPI.
 
 ---
 

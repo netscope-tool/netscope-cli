@@ -359,3 +359,22 @@
 2026-02-13 23:31:16 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_233116_speedtest/results.csv
 2026-02-13 23:31:16 | ERROR    | netscope.modules.bandwidth:run:150 | Bandwidth test failed: speedtest-cli not installed. Install with: pip install speedtest-cli
 2026-02-13 23:31:16 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: error=speedtest-cli not installed. Install with: pip install speedtest-cli
+2026-02-13 23:36:17 | INFO     | netscope.cli.main:_run_interactive:150 | NetScope exited normally
+2026-02-13 23:36:20 | INFO     | netscope.storage.logger:setup_logging:52 | Logging initialized
+2026-02-13 23:36:20 | DEBUG    | netscope.storage.logger:setup_logging:53 | Log files: /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope.log, /Users/HP/Documents/zubabroadband/netdiag-cli/output/netscope_errors.log
+2026-02-13 23:36:29 | INFO     | netscope.cli.main:_run_interactive:223 | Created test run directory: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_233629_speedtest
+2026-02-13 23:36:29 | DEBUG    | netscope.storage.csv_handler:_create_csv:43 | Created CSV file: /Users/HP/Documents/zubabroadband/netdiag-cli/output/2026-02-13_233629_speedtest/results.csv
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: download_mbps=38.76084185906289
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: upload_mbps=9.60989669721936
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: latency_ms=32.561
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: jitter_ms=0.0
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: packet_loss_percent=0.0
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: test_duration_sec=28.973245859146118
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: method=speedtest
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: server_id=23535
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: server_sponsor=Airtel Uganda
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: server_name=Kampala
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: server_host=speedtest.ug.airtel.com:8080
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: server_country=Uganda
+2026-02-13 23:37:03 | DEBUG    | netscope.storage.csv_handler:write_result:81 | Wrote result to CSV: server_latency_ms=32.561
+2026-02-13 23:37:15 | INFO     | netscope.cli.main:_run_interactive:455 | NetScope exited normally

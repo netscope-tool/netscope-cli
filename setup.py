@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="netscope",
+    name="netscope-cli",
     version="1.0.0",  # Keep in sync with netscope/__init__.py and pyproject.toml
     author="NetScope Team",
     author_email="team@netscope.dev",
