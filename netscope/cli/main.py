@@ -152,15 +152,32 @@ def _run_interactive(
             break
 
         if choice == "Dashboard":
-            # Launch the TUI dashboard (temporary session)
-            from netscope.tui.dashboard import NetworkDashboard
+            # Launch the aggregated dashboard
+            from netscope.cli.dashboard_cmd import run_aggregated_dashboard
 
-            console.print("\n[bold cyan]Launching NetScope Dashboard… (press Ctrl+C to exit)[/bold cyan]\n")
-            dash = NetworkDashboard(console=console)
+            console.print("\n[bold cyan]Launching NetScope Aggregated Dashboard…[/bold cyan]\n")
+            
+            # Ask if user wants to scan ports
+            import questionary
+            scan_ports = questionary.confirm(
+                "Scan ports on discovered devices? (slower but more detailed)",
+                default=True
+            ).ask()
+            
+            if scan_ports is None:
+                continue
+            
             try:
-                dash.run(duration=0)  # 0 = run until interrupted
+                run_aggregated_dashboard(
+                    console=console,
+                    scan_ports=scan_ports,
+                    live_mode=False,
+                )
             except KeyboardInterrupt:
-                pass
+                console.print("\n[cyan]Dashboard stopped.[/cyan]")
+            
+            console.print("\n[dim]Press Enter to return to menu...[/dim]")
+            input()
             continue
 
         # Determine target / input per test
@@ -692,7 +709,7 @@ def show_main_menu() -> str:
         Choice("ARP Scan — Discover devices on local network", value="ARP Scan"),
         Choice("Ping Sweep — Find alive hosts in a network range", value="Ping Sweep"),
         Choice("Speedtest — Download/upload speed (choose server or auto)", value="Speedtest"),
-        Choice("Dashboard — Live network status view", value="Dashboard"),
+        Choice("Dashboard — Aggregated network, system, devices & security view", value="Dashboard"),
         Choice("Exit", value="Exit"),
     ]
 
