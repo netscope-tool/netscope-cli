@@ -523,7 +523,7 @@ jobs:
 ### User Support
 - GitHub Issues: https://github.com/netscope-tool/netscope-cli/issues
 - Documentation: https://netscope-cli.readthedocs.io
-- Email: support@netscope.dev
+- Email: dadishimwe0@gmail.com
 
 ### Maintenance Schedule
 - **Patch releases**: As needed for critical bugs
