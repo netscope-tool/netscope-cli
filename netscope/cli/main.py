@@ -253,15 +253,37 @@ def _run_interactive(
 
         try:
             if choice == "Ping Test":
-                test = PingTest(executor, csv_handler)
-                _result_holder: list = []
-                def _run():
-                    _result_holder.append(test.run(target))
-                _t = threading.Thread(target=_run)
-                _t.start()
-                with Live(Spinner("dots", text="Pinging…"), console=console, refresh_per_second=8):
-                    while _t.is_alive():
-                        _t.join(timeout=0.05)
+                # Ask if user wants advanced options
+                from netscope.cli.advanced_options import prompt_mode_selection, prompt_ping_options
+                from netscope.modules.connectivity_enhanced import PingTestEnhanced
+                
+                use_advanced = questionary.confirm(
+                    "Use advanced ping options?",
+                    default=False
+                ).ask()
+                
+                if use_advanced:
+                    simple_mode = prompt_mode_selection()
+                    ping_options = prompt_ping_options(simple_mode)
+                    test = PingTestEnhanced(executor, csv_handler)
+                    _result_holder: list = []
+                    def _run():
+                        _result_holder.append(test.run(target, ping_options))
+                    _t = threading.Thread(target=_run)
+                    _t.start()
+                    with Live(Spinner("dots", text=f"Pinging ({ping_options.count} packets)…"), console=console, refresh_per_second=8):
+                        while _t.is_alive():
+                            _t.join(timeout=0.05)
+                else:
+                    test = PingTest(executor, csv_handler)
+                    _result_holder: list = []
+                    def _run():
+                        _result_holder.append(test.run(target))
+                    _t = threading.Thread(target=_run)
+                    _t.start()
+                    with Live(Spinner("dots", text="Pinging…"), console=console, refresh_per_second=8):
+                        while _t.is_alive():
+                            _t.join(timeout=0.05)
                 result = _result_holder[0]
                 results = [result]
             elif choice == "Traceroute Test":
@@ -277,15 +299,37 @@ def _run_interactive(
                 result = _result_holder[0]
                 results = [result]
             elif choice == "DNS Lookup":
-                test = DNSTest(executor, csv_handler)
-                _result_holder = []
-                def _run():
-                    _result_holder.append(test.run(target))
-                _t = threading.Thread(target=_run)
-                _t.start()
-                with Live(Spinner("dots", text="Resolving DNS…"), console=console, refresh_per_second=8):
-                    while _t.is_alive():
-                        _t.join(timeout=0.05)
+                # Ask if user wants advanced options
+                from netscope.cli.advanced_options import prompt_dns_options
+                from netscope.modules.dns_enhanced import DNSTestEnhanced
+                
+                use_advanced = questionary.confirm(
+                    "Use advanced DNS options? (Query types, custom DNS server, etc.)",
+                    default=False
+                ).ask()
+                
+                if use_advanced:
+                    simple_mode = prompt_mode_selection()
+                    dns_options = prompt_dns_options(simple_mode)
+                    test = DNSTestEnhanced(executor, csv_handler)
+                    _result_holder = []
+                    def _run():
+                        _result_holder.append(test.run(target, dns_options))
+                    _t = threading.Thread(target=_run)
+                    _t.start()
+                    with Live(Spinner("dots", text=f"Querying {dns_options.record_type} records…"), console=console, refresh_per_second=8):
+                        while _t.is_alive():
+                            _t.join(timeout=0.05)
+                else:
+                    test = DNSTest(executor, csv_handler)
+                    _result_holder = []
+                    def _run():
+                        _result_holder.append(test.run(target))
+                    _t = threading.Thread(target=_run)
+                    _t.start()
+                    with Live(Spinner("dots", text="Resolving DNS…"), console=console, refresh_per_second=8):
+                        while _t.is_alive():
+                            _t.join(timeout=0.05)
                 result = _result_holder[0]
                 results = [result]
             elif choice == "Port Scan":
@@ -297,25 +341,59 @@ def _run_interactive(
                     ],
                 ).ask()
                 preset = preset_choice or "top20"
-                total_ports = len(PORT_PRESET_TOP100 if preset == "top100" else PORT_PRESET_TOP20)
-                test = PortScanTest(executor, csv_handler)
-                _result_holder: list = []
-                with Progress(
-                    TextColumn("[bold cyan]{task.description}[/bold cyan]"),
-                    BarColumn(bar_width=24),
-                    TaskProgressColumn(),
-                    console=console,
-                    transient=True,
-                ) as progress:
-                    task = progress.add_task("Scanning ports…", total=total_ports)
-                    def _run():
-                        def _cb(completed: int, _total: int) -> None:
-                            progress.update(task, completed=completed)
-                        _result_holder.append(test.run(target, preset=preset, progress_callback=_cb))
-                    _t = threading.Thread(target=_run)
-                    _t.start()
-                    while _t.is_alive():
-                        _t.join(timeout=0.05)
+                
+                # Ask if user wants advanced options
+                from netscope.cli.advanced_options import prompt_port_scan_options
+                from netscope.modules.ports_enhanced import PortScanTestEnhanced
+                
+                use_advanced = questionary.confirm(
+                    "Use advanced port scan options? (Service detection, timeout, etc.)",
+                    default=False
+                ).ask()
+                
+                if use_advanced:
+                    simple_mode = prompt_mode_selection()
+                    port_options = prompt_port_scan_options(simple_mode)
+                    ports = PORT_PRESET_TOP100 if preset == "top100" else PORT_PRESET_TOP20
+                    total_ports = len(ports)
+                    test = PortScanTestEnhanced(executor, csv_handler)
+                    _result_holder: list = []
+                    with Progress(
+                        TextColumn("[bold cyan]{task.description}[/bold cyan]"),
+                        BarColumn(bar_width=24),
+                        TaskProgressColumn(),
+                        console=console,
+                        transient=True,
+                    ) as progress:
+                        task = progress.add_task("Scanning ports…", total=total_ports)
+                        def _run():
+                            def _cb(completed: int, _total: int) -> None:
+                                progress.update(task, completed=completed)
+                            _result_holder.append(test.run(target, ports, port_options, _cb))
+                        _t = threading.Thread(target=_run)
+                        _t.start()
+                        while _t.is_alive():
+                            _t.join(timeout=0.05)
+                else:
+                    total_ports = len(PORT_PRESET_TOP100 if preset == "top100" else PORT_PRESET_TOP20)
+                    test = PortScanTest(executor, csv_handler)
+                    _result_holder: list = []
+                    with Progress(
+                        TextColumn("[bold cyan]{task.description}[/bold cyan]"),
+                        BarColumn(bar_width=24),
+                        TaskProgressColumn(),
+                        console=console,
+                        transient=True,
+                    ) as progress:
+                        task = progress.add_task("Scanning ports…", total=total_ports)
+                        def _run():
+                            def _cb(completed: int, _total: int) -> None:
+                                progress.update(task, completed=completed)
+                            _result_holder.append(test.run(target, preset=preset, progress_callback=_cb))
+                        _t = threading.Thread(target=_run)
+                        _t.start()
+                        while _t.is_alive():
+                            _t.join(timeout=0.05)
                 result = _result_holder[0]
                 results = [result]
             elif choice == "Nmap Scan":
