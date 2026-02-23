@@ -1,6 +1,6 @@
 # NetScope CLI - Distribution Guide
 
-This guide provides comprehensive instructions for distributing NetScope CLI as a global Python package.
+This guide provides comprehensive instructions for distributing NetScope CLI as a global Python package
 
 ## Table of Contents
 
