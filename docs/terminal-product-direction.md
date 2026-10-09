@@ -10,7 +10,7 @@ Progress should report only what is known: current stage, target, elapsed time, 
 
 Before this iteration, the codebase already included ping, traceroute, DNS, TCP port scanning, Nmap XML parsing, local ARP discovery, TLS checks, security-audit helpers, and HTML/notebook output. The largest gaps were that several capabilities were not surfaced in the guided flow, structured findings were inconsistently rendered, MTR and first-class website exploration were absent, and the HTML report had a separate visual identity and external chart dependency.
 
-This iteration adds guided Nmap profile selection, a finite MTR report, an HTTP/TLS snapshot, passive certificate-transparency name discovery, and a recent-run picker for generating terminal-themed HTML reports without command syntax. CT results are explicitly treated as an inventory of public certificate observations; discovered hosts are not automatically contacted. The terminal result should identify coverage limitations (for example, unavailable CT lookup or an HTTP timeout) instead of presenting partial data as a clean bill of health.
+This iteration adds guided Nmap profile selection, a persistent alternate-screen MTR dashboard with finite `--once` support, an HTTP/TLS snapshot, passive certificate-transparency name discovery, and a recent-run picker for generating terminal-themed HTML reports without command syntax. CT results are explicitly treated as an inventory of public certificate observations; discovered hosts are not automatically contacted. The terminal result should identify coverage limitations (for example, unavailable CT lookup or an HTTP timeout) instead of presenting partial data as a clean bill of health.
 
 Useful follow-on capabilities, ordered by user value and operational cost:
 

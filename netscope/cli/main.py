@@ -181,7 +181,6 @@ def _run_interactive(
             console.print("\n[bold cyan]Launching NetScope Aggregated Dashboard…[/bold cyan]\n")
             
             # Ask if user wants to scan ports
-            import questionary
             scan_ports = questionary.confirm(
                 "Scan ports on discovered devices? (slower but more detailed)",
                 default=True
@@ -304,6 +303,7 @@ def _run_interactive(
             console.print(f"\n[bold cyan]Running {choice}...[/bold cyan]\n")
 
         try:
+            live_session = None
             if choice == "Ping Test":
                 # Ask if user wants advanced options
                 from netscope.cli.advanced_options import prompt_mode_selection, prompt_ping_options
@@ -477,21 +477,25 @@ def _run_interactive(
                 results = [result]
             elif choice == "MTR Route Quality":
                 cycles = questionary.select(
-                    "How many route-quality samples?",
-                    choices=[Choice("5 cycles · quick", value=5), Choice("10 cycles · standard", value=10), Choice("20 cycles · detailed", value=20)],
-                    default=10,
+                    "How many MTR cycles per live refresh?",
+                    choices=[Choice("3 cycles · faster refresh", value=3), Choice("5 cycles · standard", value=5), Choice("10 cycles · steadier sample", value=10)],
+                    default=5,
                 ).ask()
                 if cycles is None:
                     continue
                 test = MTRTest(executor, csv_handler)
-                _result_holder = []
-                _t = threading.Thread(target=lambda: _result_holder.append(test.run(target, cycles=cycles)))
-                _t.start()
-                with Live(Spinner("dots", text=f"Measuring path quality · {cycles} cycles…"), console=console, refresh_per_second=8):
-                    while _t.is_alive():
-                        _t.join(timeout=0.05)
-                _save_raw_output(test_run_dir, "mtr.txt", _result_holder[0].raw_output)
-                results = [_result_holder[0]]
+                if sys.stdin.isatty() and sys.stdout.isatty():
+                    from netscope.tui.mtr_live import run_live_mtr_dashboard
+                    console.print("[dim]Entering the live route dashboard · press q to return.[/dim]")
+                    live_session = run_live_mtr_dashboard(target, test, console, cycles=cycles)
+                    if live_session.result is None:
+                        console.print("[dim]Live MTR stopped before the first report was complete.[/dim]")
+                        continue
+                    result = live_session.result
+                else:
+                    result = test.run(target, cycles=cycles)
+                _save_raw_output(test_run_dir, "mtr.txt", result.raw_output)
+                results = [result]
             elif choice == "Website Exposure Audit":
                 include_subdomains = questionary.confirm(
                     "Include passive Certificate Transparency name discovery?", default=True,
@@ -635,6 +639,11 @@ def _run_interactive(
                 }
                 if choice == "Nmap Scan":
                     metadata["scan_profile"] = profile
+                if choice == "MTR Route Quality" and live_session is not None:
+                    metadata["live_session"] = True
+                    metadata["live_sample_count"] = live_session.sample_count
+                    metadata["cycles_per_sample"] = cycles
+                    metadata["duration_seconds"] = live_session.duration_seconds
                 config.save_metadata(test_run_dir, metadata)
                 console.print(f"\n[bold green]✓ Results saved to:[/bold green] {test_run_dir}")
                 console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
@@ -889,7 +898,7 @@ def show_main_menu() -> str:
         Choice("Port Scan — Check which TCP ports are open", value="Port Scan"),
         Choice("Nmap Scan — Detailed port & service scan (requires nmap)", value="Nmap Scan"),
         Choice("Website Audit — HTTP headers, TLS certificate & passive subdomains", value="Website Exposure Audit"),
-        Choice("MTR — Per-hop latency and packet-loss report", value="MTR Route Quality"),
+        Choice("MTR — Live route dashboard; press q to stop", value="MTR Route Quality"),
         Choice("ARP Scan — Discover devices on local network", value="ARP Scan"),
         Choice("Ping Sweep — Find alive hosts in a network range", value="Ping Sweep"),
         Choice("Speedtest — Download/upload speed (choose server or auto)", value="Speedtest"),
@@ -1247,38 +1256,67 @@ def nmap_scan(
 @app.command(name="mtr")
 def mtr_scan(
     target: str = typer.Argument(..., help="Target IP or hostname"),
-    cycles: int = typer.Option(10, "--cycles", "-c", min=1, max=100, help="MTR probe cycles (1–100)."),
+    cycles: int = typer.Option(5, "--cycles", "-c", min=1, max=100, help="Probe cycles per live refresh (1–100)."),
+    live: bool = typer.Option(True, "--live/--once", help="Use a persistent full-screen dashboard in a terminal; --once emits one report and exits."),
     output_dir: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory for results"),
     output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich or json"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
 ):
-    """Run a finite MTR route-quality report (requires `mtr`)."""
+    """Run a persistent live MTR dashboard, or use --once for a finite report."""
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
     test_run_dir = config.create_test_run_dir("mtr_route_quality")
     csv_handler = CSVHandler(test_run_dir / "results.csv")
     executor = TestExecutor(system_info, logger)
-    console.print(f"\n[bold]MTR route quality · {target} · {cycles} cycles[/bold]")
-    console.print("[dim]The report is emitted when MTR completes; no estimated percentage is shown.[/dim]")
-    _result_holder = []
-    _t = threading.Thread(target=lambda: _result_holder.append(
-        MTRTest(executor, csv_handler).run(_resolve_target(target), cycles=cycles)
-    ))
-    _t.start()
-    with Live(Spinner("dots", text=f"Sampling route · {cycles} cycles…"), console=console, refresh_per_second=8):
-        while _t.is_alive():
-            _t.join(timeout=0.05)
-    result = _result_holder[0]
+    resolved_target = _resolve_target(target)
+    scanner = MTRTest(executor, csv_handler)
+    use_live = live and output_format != "json" and sys.stdin.isatty() and sys.stdout.isatty()
+    live_session = None
+    if use_live:
+        from netscope.tui.mtr_live import run_live_mtr_dashboard
+        console.print(f"\n[bold]MTR live route dashboard · {resolved_target} · {cycles} cycles per refresh[/bold]")
+        live_session = run_live_mtr_dashboard(resolved_target, scanner, console, cycles=cycles)
+        result = live_session.result
+        if result is None:
+            config.save_metadata(test_run_dir, {
+                "test_type": "MTR Route Quality", "target": resolved_target, "status": "cancelled",
+                "live_session": True, "live_sample_count": 0,
+                "system_info": system_info.model_dump(mode="json"),
+            })
+            console.print("[dim]Live MTR stopped before a complete report was available.[/dim]")
+            return
+    else:
+        if output_format == "json":
+            result = scanner.run(resolved_target, cycles=cycles)
+        else:
+            if live and not (sys.stdin.isatty() and sys.stdout.isatty()):
+                console.print("[dim]No interactive terminal detected; running one finite MTR report. Use --live in a TTY or --once for scripts.[/dim]")
+            console.print(f"\n[bold]MTR route quality · {resolved_target} · {cycles} cycles[/bold]")
+            console.print("[dim]The report is emitted when MTR completes; no estimated percentage is shown.[/dim]")
+            _result_holder = []
+            _t = threading.Thread(target=lambda: _result_holder.append(scanner.run(resolved_target, cycles=cycles)))
+            _t.start()
+            with Live(Spinner("dots", text=f"Sampling route · {cycles} cycles…"), console=console, refresh_per_second=8):
+                while _t.is_alive():
+                    _t.join(timeout=0.05)
+            result = _result_holder[0]
     _save_raw_output(test_run_dir, "mtr.txt", result.raw_output)
     if output_format == "json":
         _output_results_json(result)
     else:
         format_test_result(result, console)
-    config.save_metadata(test_run_dir, {
-        "test_type": "MTR Route Quality", "target": target, "status": result.status,
-        "cycles": cycles, "duration_seconds": result.duration,
+    metadata = {
+        "test_type": "MTR Route Quality", "target": resolved_target, "status": result.status,
+        "cycles": cycles, "duration_seconds": live_session.duration_seconds if live_session else result.duration,
         "system_info": system_info.model_dump(mode="json"),
-    })
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+    }
+    if live_session:
+        metadata.update({
+            "live_session": True, "live_sample_count": live_session.sample_count,
+            "cycles_per_sample": cycles,
+        })
+    config.save_metadata(test_run_dir, metadata)
+    if output_format != "json":
+        console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
 
 
 @app.command(name="website-audit")

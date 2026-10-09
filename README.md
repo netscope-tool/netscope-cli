@@ -47,7 +47,7 @@ Install `netscope-cli[reports]` only if you plan to execute generated Jupyter no
 - ✅ Traceroute path analysis (with hop table)
 - ✅ DNS resolution testing (IPv4/IPv6 aware)
 - ✅ Pure-Python port scan (top ports) + optional nmap integration
-- ✅ MTR per-hop latency and packet-loss reports (optional system `mtr`)
+- ✅ Live, full-screen MTR route dashboard with per-hop latency and loss (optional system `mtr`)
 - ✅ Website snapshot: TLS certificate, HTTP security headers, and passive Certificate Transparency names
 - ✅ ARP scan and ping sweep for local discovery
 - ✅ CSV logging with timestamps + structured logs
@@ -148,7 +148,7 @@ You’ll see a header, system information, and then a menu where you can choose:
 - Speedtest (optional; will prompt to install `speedtest-cli` if missing)  
 - Ping Sweep  
 - Website Audit (HTTP/TLS and passive certificate names)
-- MTR Route Quality (if `mtr` is installed)
+- Live MTR route dashboard (if `mtr` is installed; press `q` to stop)
 - Dashboard (aggregated local network and system view)
 - Generate HTML Report (choose a saved run from a recent-runs menu)
 - Exit
@@ -183,8 +183,11 @@ netscope nmap-scan example.com --profile udp --ports 53,123,161
 # Website headers, TLS certificate, and passive Certificate Transparency names
 netscope website-audit https://example.com
 
-# Per-hop packet loss and latency report (if mtr is installed)
-netscope mtr example.com --cycles 10
+# Persistent full-screen MTR dashboard (press q or Ctrl+C to stop)
+netscope mtr example.com
+
+# One finite report for scripts or JSON output
+netscope mtr example.com --once --cycles 10 --format json
 
 # ARP scan (local devices)
 netscope arp-scan

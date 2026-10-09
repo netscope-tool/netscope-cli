@@ -102,10 +102,10 @@ work with the generated reports.
 - **Scope note**: Certificate Transparency names are historical/public issuance observations. NetScope does not connect to discovered names automatically. An unavailable lookup means coverage is incomplete.
 
 ### MTR Route Quality
-- **Command**: `netscope mtr <target> --cycles 10`
-- **What it does**: Runs MTR in finite report mode and records per-hop loss and round-trip-time statistics.
+- **Command**: `netscope mtr <target>` (live in a TTY); use `--once --cycles 10` for one finite report.
+- **What it does**: Opens an alternate-screen dashboard that replaces the latest per-hop loss and round-trip-time table after each MTR report batch. The session remains active until `q` or Ctrl+C; completed batches and raw evidence are saved with the run.
 - **Key metrics**: Hop count, sent probes, loss percentage, average/best/worst RTT where supplied by the installed MTR version.
-- **Progress note**: Report mode returns measurements when sampling finishes; the interface uses an activity indicator and does not invent a percentage.
+- **Progress note**: Each refresh shows the current batch and elapsed session time. It does not invent a percentage while MTR is collecting a batch.
 
 ### ARP Scan
 

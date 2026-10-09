@@ -88,12 +88,15 @@ Discovered CT names are passive certificate observations. NetScope does not prob
 
 ### `netscope mtr`
 
-- **Description**: Run a finite `mtr` report and summarize per-hop packet loss and latency.
+- **Description**: In a TTY, open the persistent full-screen route dashboard; the latest hop table refreshes in place until `q` or Ctrl+C. Non-interactive use runs one report.
 - **Usage**:
   ```bash
-  netscope mtr 8.8.8.8 --cycles 10
+  netscope mtr 8.8.8.8
+  netscope mtr 8.8.8.8 --cycles 3       # refresh after each 3-cycle batch
+  netscope mtr 8.8.8.8 --once --cycles 10
+  netscope mtr 8.8.8.8 --once --format json
   ```
-Requires the system `mtr` binary. Each cycle takes about one second; report mode emits its measurements after sampling completes.
+Requires the system `mtr` binary. The alternate-screen dashboard does not keep a scrollback of frames; it stores completed report batches with the run. Use `--once` for a single report or scripts.
 
 ### `netscope arp-scan`
 
