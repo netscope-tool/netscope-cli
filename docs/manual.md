@@ -88,12 +88,14 @@ work with the generated reports.
 
 ### Nmap Scan (optional)
 
-- **Command**: `netscope nmap-scan <target> [--ports ...] [--profile connect|service|udp]`
-- **What it does**: Runs `nmap` with XML output and parses open ports and services.
+- **Command**: `netscope nmap-scan <target> [<target> ...] [--ports ...] [--profile connect|service|udp|vuln]`
+- **What it does**: Runs one Nmap process over a bounded batch of explicit hosts, streams XML progress and completed hosts into an alternate-screen dashboard, and retains raw XML with the run. Press `q` or Ctrl+C to cancel and save partial evidence; `--once` selects a finite report.
 - **Key metrics**:
   - `open_ports`, `open_count`, `closed_count`, `filtered_count`
-  - `hosts_up`, `hosts_down`
+  - `hosts_up`, `hosts_down`, per-host service rows
   - `services` – per-port service details (name, product, version)
+- **Vulnerability profile**: Uses light TCP service detection and `vuln and safe and not intrusive and not external and not dos and not exploit` scripts against the top 20 TCP ports by default. It accepts at most 16 explicit targets and 100 numeric TCP ports per target, and caps the scan timeout at 900 seconds. CIDRs, address ranges, arbitrary scripts, exploit scripts, and DoS scripts are not accepted by this profile.
+- **Interpretation and scope**: Nmap's `safe` category is a risk reduction, not a zero-impact guarantee. Script output is retained as evidence and is not a severity score or proof of exploitability. Scan only systems you are authorized to assess.
 
 ### Website Exposure Audit
 - **Command**: `netscope website-audit <hostname-or-url>`
@@ -102,10 +104,10 @@ work with the generated reports.
 - **Scope note**: Certificate Transparency names are historical/public issuance observations. NetScope does not connect to discovered names automatically. An unavailable lookup means coverage is incomplete.
 
 ### MTR Route Quality
-- **Command**: `netscope mtr <target> --cycles 10`
-- **What it does**: Runs MTR in finite report mode and records per-hop loss and round-trip-time statistics.
+- **Command**: `netscope mtr <target>` (live in a TTY); use `--once --cycles 10` for one finite report.
+- **What it does**: Opens an alternate-screen dashboard that replaces the latest per-hop loss and round-trip-time table after each MTR report batch. The session remains active until `q` or Ctrl+C; completed batches and raw evidence are saved with the run.
 - **Key metrics**: Hop count, sent probes, loss percentage, average/best/worst RTT where supplied by the installed MTR version.
-- **Progress note**: Report mode returns measurements when sampling finishes; the interface uses an activity indicator and does not invent a percentage.
+- **Progress note**: Each refresh shows the current batch and elapsed session time. It does not invent a percentage while MTR is collecting a batch.
 
 ### ARP Scan
 

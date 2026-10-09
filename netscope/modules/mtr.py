@@ -16,7 +16,7 @@ _NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
 
 
 def parse_mtr_report(text: str) -> List[Dict[str, Any]]:
-    """Parse the stable wide text report emitted by `mtr -r -w -n`.
+    """Parse the stable wide report emitted by ``mtr --report --report-wide``.
 
     MTR versions differ in whether they print ``1.|--`` or ``1.`` before a
     hop. The parser tolerates both and preserves loss and RTT columns when
@@ -43,17 +43,13 @@ def parse_mtr_report(text: str) -> List[Dict[str, Any]]:
                 if idx + 1 < len(tokens) and tokens[idx + 1].isdigit():
                     sent = int(tokens[idx + 1])
                 for token in tokens[idx + 2:idx + 7]:
-                    if token == "?" or token == "???":
+                    if token in {"?", "???"}:
                         rtts.append(float("nan"))
                         continue
                     number = _NUMBER_RE.search(token)
                     if number:
                         rtts.append(float(number.group(0)))
-        # If the loss column is absent, keep only the address and hop number.
-        hop: Dict[str, Any] = {
-            "hop": int(match.group("hop")),
-            "host": match.group("host"),
-        }
+        hop: Dict[str, Any] = {"hop": int(match.group("hop")), "host": match.group("host")}
         if loss is not None:
             hop["packet_loss_percent"] = loss
         if sent is not None:
@@ -70,6 +66,19 @@ def parse_mtr_report(text: str) -> List[Dict[str, Any]]:
 class MTRTest(BaseTest):
     """Run a finite MTR report and return per-hop loss and latency."""
 
+    @staticmethod
+    def build_command(target: str, cycles: int, executable: Optional[str] = None) -> List[str]:
+        """Build a safe argument vector shared by one-shot and live sampling."""
+        if not 1 <= cycles <= 100:
+            raise ValueError("MTR cycles must be between 1 and 100")
+        binary = executable or shutil.which("mtr")
+        if not binary:
+            raise FileNotFoundError("mtr is not installed or not found in PATH")
+        return [
+            binary, "--report", "--report-wide", "--report-cycles", str(cycles),
+            "--no-dns", "--", target,
+        ]
+
     def run(self, target: str, cycles: int = 10, timeout: Optional[int] = None) -> TestResult:
         started = datetime.now()
         if not 1 <= cycles <= 100:
@@ -81,35 +90,56 @@ class MTRTest(BaseTest):
                 error="Install mtr (for example: apt install mtr or brew install mtr).",
             )
 
-        # Each report cycle is approximately one second; a generous multiplier
-        # leaves room for slow or partially unreachable routes.
         effective_timeout = timeout or max(20, cycles * 3 + 10)
-        command = [
-            executable, "--report", "--report-wide", "--report-cycles", str(cycles),
-            "--no-dns", "--", target,
-        ]
+        command = self.build_command(target, cycles, executable)
         try:
             proc = subprocess.run(
                 command, capture_output=True, text=True, timeout=effective_timeout, check=False,
             )
         except subprocess.TimeoutExpired as exc:
-            output = exc.stdout or ""
-            return self._result(
-                target, started, "failure", f"MTR did not finish within {effective_timeout}s.",
-                raw_output=output, error=f"timeout after {effective_timeout}s",
+            stdout = exc.stdout or ""
+            stderr = exc.stderr or ""
+            if isinstance(stdout, bytes):
+                stdout = stdout.decode("utf-8", errors="replace")
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", errors="replace")
+            return self.result_from_report(
+                target, cycles, stdout, stderr, returncode=1, started=started,
+                failure_summary=f"MTR did not finish within {effective_timeout}s.",
+                failure_error=f"timeout after {effective_timeout}s",
             )
         except OSError as exc:
             return self._result(target, started, "failure", f"Could not start mtr: {exc}", error=str(exc))
 
-        output = (proc.stdout or "").strip()
-        if proc.stderr:
-            output = f"{output}\n{proc.stderr.strip()}".strip()
-        hops = parse_mtr_report(proc.stdout or "")
-        status = "success" if proc.returncode == 0 and hops else "failure"
-        if proc.returncode == 0 and not hops:
+        return self.result_from_report(
+            target, cycles, proc.stdout or "", proc.stderr or "", proc.returncode, started=started,
+        )
+
+    def result_from_report(
+        self,
+        target: str,
+        cycles: int,
+        stdout: str,
+        stderr: str = "",
+        returncode: int = 0,
+        started: Optional[datetime] = None,
+        failure_summary: Optional[str] = None,
+        failure_error: Optional[str] = None,
+    ) -> TestResult:
+        """Parse one completed report batch into the normal persisted result."""
+        started = started or datetime.now()
+        output = (stdout or "").strip()
+        if stderr:
+            output = f"{output}\n{stderr.strip()}".strip()
+        hops = parse_mtr_report(stdout or "")
+        status = "success" if returncode == 0 and hops else "failure"
+
+        if failure_summary:
+            summary = failure_summary
+        elif returncode == 0 and not hops:
             summary = "MTR completed, but no hop rows could be parsed; see raw output."
-        elif proc.returncode != 0:
-            summary = f"mtr exited with code {proc.returncode}."
+        elif returncode != 0:
+            summary = f"mtr exited with code {returncode}."
         else:
             end_to_end_loss = hops[-1].get("packet_loss_percent")
             average = hops[-1].get("avg_ms")
@@ -121,7 +151,8 @@ class MTRTest(BaseTest):
             suffix = f" ({', '.join(details)})" if details else ""
             summary = f"MTR observed {len(hops)} hop(s) over {cycles} cycle(s){suffix}."
 
-        result = self._result(
+        error = failure_error or (None if status == "success" else (stderr.strip() or f"mtr exited with code {returncode}"))
+        return self._result(
             target, started, status, summary,
             metrics={
                 "cycles": cycles,
@@ -132,9 +163,8 @@ class MTRTest(BaseTest):
                     "check whether it continues to later hops and the destination."
                 ),
             },
-            raw_output=output, error=None if status == "success" else (proc.stderr or None),
+            raw_output=output, error=error,
         )
-        return result
 
     def parse_output(self, output: str) -> Dict[str, Any]:
         hops = parse_mtr_report(output)

@@ -47,7 +47,8 @@ Install `netscope-cli[reports]` only if you plan to execute generated Jupyter no
 - ✅ Traceroute path analysis (with hop table)
 - ✅ DNS resolution testing (IPv4/IPv6 aware)
 - ✅ Pure-Python port scan (top ports) + optional nmap integration
-- ✅ MTR per-hop latency and packet-loss reports (optional system `mtr`)
+- ✅ Live, multi-target Nmap dashboard with a bounded safe-NSE vulnerability profile
+- ✅ Live, full-screen MTR route dashboard with per-hop latency and loss (optional system `mtr`)
 - ✅ Website snapshot: TLS certificate, HTTP security headers, and passive Certificate Transparency names
 - ✅ ARP scan and ping sweep for local discovery
 - ✅ CSV logging with timestamps + structured logs
@@ -143,12 +144,12 @@ You’ll see a header, system information, and then a menu where you can choose:
 - Traceroute Test  
 - DNS Lookup  
 - Port Scan  
-- Nmap Scan (if `nmap` is installed)  
+- Nmap Scan (if `nmap` is installed; live progress and safe vulnerability profile)
 - ARP Scan  
 - Speedtest (optional; will prompt to install `speedtest-cli` if missing)  
 - Ping Sweep  
 - Website Audit (HTTP/TLS and passive certificate names)
-- MTR Route Quality (if `mtr` is installed)
+- Live MTR route dashboard (if `mtr` is installed; press `q` to stop)
 - Dashboard (aggregated local network and system view)
 - Generate HTML Report (choose a saved run from a recent-runs menu)
 - Exit
@@ -175,16 +176,21 @@ netscope quick-check example.com
 # Pure-Python port scan (top ports)
 netscope ports 192.168.1.1 --preset top100
 
-# Nmap-based scan (if nmap is installed)
+# Nmap scan (if nmap is installed; in a TTY this opens the live dashboard)
 netscope nmap-scan example.com
 netscope nmap-scan example.com --profile connect
 netscope nmap-scan example.com --profile udp --ports 53,123,161
+netscope nmap-scan app.example.com api.example.com --profile vuln
+netscope nmap-scan app.example.com --profile vuln --ports 80,443 --once
 
 # Website headers, TLS certificate, and passive Certificate Transparency names
 netscope website-audit https://example.com
 
-# Per-hop packet loss and latency report (if mtr is installed)
-netscope mtr example.com --cycles 10
+# Persistent full-screen MTR dashboard (press q or Ctrl+C to stop)
+netscope mtr example.com
+
+# One finite report for scripts or JSON output
+netscope mtr example.com --once --cycles 10 --format json
 
 # ARP scan (local devices)
 netscope arp-scan
@@ -196,6 +202,8 @@ netscope speedtest --server 12345
 # Ping sweep over a small CIDR
 netscope ping-sweep 192.168.1.0/24
 ```
+
+The Nmap `vuln` profile uses a restricted `vuln` + `safe` NSE selection and excludes intrusive, external, DoS, and exploit categories. It is limited to 16 explicitly named hosts, 100 numeric TCP ports per host, and a 900-second timeout; CIDRs and address ranges are rejected. Script output is evidence to review, not proof of exploitability. Scan only systems you are authorized to assess.
 
 By default, results are shown with the Rich TUI formatting.  
 For machine‑readable output (e.g. piping to `jq` or logs), you can use:

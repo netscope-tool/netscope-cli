@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from netscope.cli.main import _recent_run_directories
+from netscope.cli.main import _recent_run_directories, _run_interactive
 from netscope.modules.mtr import MTRTest, parse_mtr_report
 from netscope.modules.nmap_scan import NMAP_PROFILES, run_nmap_xml
 from netscope.modules.website_audit import WebsiteAuditTest, normalize_website_target
@@ -84,7 +84,9 @@ def test_nmap_profile_arguments_replace_defaults_and_delimit_target(monkeypatch)
     monkeypatch.setattr("netscope.modules.nmap_scan.subprocess.run", fake_run)
     run_nmap_xml("-example.invalid", ports="443", extra_args=NMAP_PROFILES["connect"])
     command = observed["command"]
-    assert "-sT" in command and "-F" in command
+    assert "-sT" in command and "-F" not in command
+    assert command[command.index("-p") + 1] == "443"
+    assert "--stats-every" in command
     assert "-sV" not in command
     assert command[-2:] == ["--", "-example.invalid"]
 
@@ -139,3 +141,7 @@ def test_recent_run_picker_only_lists_result_directories(tmp_path: Path):
         (directory / "results.csv").write_text("metric,value\n", encoding="utf-8")
     (tmp_path / "logs").mkdir()
     assert _recent_run_directories(tmp_path) == [newer, older]
+
+
+def test_interactive_flow_does_not_shadow_questionary_module():
+    assert "questionary" not in _run_interactive.__code__.co_varnames

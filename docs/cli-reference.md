@@ -66,15 +66,18 @@ netscope main         # same as running netscope with no args
 
 ### `netscope nmap-scan`
 
-- **Description**: Nmap-based scan (requires `nmap` installed).
+- **Description**: Stream a bounded Nmap scan into the fullscreen dashboard in a TTY; scan multiple explicit hosts in one Nmap process. Requires `nmap` installed.
 - **Usage**:
   ```bash
   netscope nmap-scan example.com
+  netscope nmap-scan app.example.com 192.0.2.10
   netscope nmap-scan 192.168.1.1 --ports 22,80,443
   netscope nmap-scan 192.168.1.1 --profile connect
   netscope nmap-scan 192.168.1.1 --profile udp --ports 53,123
+  netscope nmap-scan app.example.com --profile vuln
+  netscope nmap-scan app.example.com api.example.com --profile vuln --ports 80,443 --once
   ```
-Profiles are `connect` (quick TCP inventory), `service` (light version detection; default), and `udp` (top 20 UDP ports unless `--ports` is supplied). Scan only systems you are authorized to assess.
+Profiles are `connect`, `service` (default), `udp`, and `vuln`. `vuln` uses light service detection and the Nmap script expression `vuln and safe and not intrusive and not external and not dos and not exploit`; by default it checks the top 20 TCP ports. It accepts up to 16 explicit hosts, up to 100 numeric TCP ports per host, and at most a 900-second timeout. Other Nmap batches accept up to 32 explicit targets. CIDRs, address ranges, and target files are deliberately rejected by the vulnerability profile. Nmap reports periodic progress and completed host/script evidence in place; press `q` or Ctrl+C to cancel and retain partial results. Use `--once` for a finite scan. JSON format is one-shot and keeps stdout machine-readable. Run scans only against systems you are authorized to assess. Nmap describes NSE scripts as unsandboxed; the `safe` category reduces risk but does not guarantee zero impact, and script output is evidence to review rather than proof of exploitability.
 
 ### `netscope website-audit`
 
@@ -88,12 +91,15 @@ Discovered CT names are passive certificate observations. NetScope does not prob
 
 ### `netscope mtr`
 
-- **Description**: Run a finite `mtr` report and summarize per-hop packet loss and latency.
+- **Description**: In a TTY, open the persistent full-screen route dashboard; the latest hop table refreshes in place until `q` or Ctrl+C. Non-interactive use runs one report.
 - **Usage**:
   ```bash
-  netscope mtr 8.8.8.8 --cycles 10
+  netscope mtr 8.8.8.8
+  netscope mtr 8.8.8.8 --cycles 3       # refresh after each 3-cycle batch
+  netscope mtr 8.8.8.8 --once --cycles 10
+  netscope mtr 8.8.8.8 --once --format json
   ```
-Requires the system `mtr` binary. Each cycle takes about one second; report mode emits its measurements after sampling completes.
+Requires the system `mtr` binary. The alternate-screen dashboard does not keep a scrollback of frames; it stores completed report batches with the run. Use `--once` for a single report or scripts.
 
 ### `netscope arp-scan`
 
