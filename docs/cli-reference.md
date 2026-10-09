@@ -71,7 +71,29 @@ netscope main         # same as running netscope with no args
   ```bash
   netscope nmap-scan example.com
   netscope nmap-scan 192.168.1.1 --ports 22,80,443
+  netscope nmap-scan 192.168.1.1 --profile connect
+  netscope nmap-scan 192.168.1.1 --profile udp --ports 53,123
   ```
+Profiles are `connect` (quick TCP inventory), `service` (light version detection; default), and `udp` (top 20 UDP ports unless `--ports` is supplied). Scan only systems you are authorized to assess.
+
+### `netscope website-audit`
+
+- **Description**: Check a site's TLS certificate, common HTTP security headers, and optionally discover hostnames from public Certificate Transparency records.
+- **Usage**:
+  ```bash
+  netscope website-audit example.com
+  netscope website-audit https://example.com --no-subdomains
+  ```
+Discovered CT names are passive certificate observations. NetScope does not probe those names automatically.
+
+### `netscope mtr`
+
+- **Description**: Run a finite `mtr` report and summarize per-hop packet loss and latency.
+- **Usage**:
+  ```bash
+  netscope mtr 8.8.8.8 --cycles 10
+  ```
+Requires the system `mtr` binary. Each cycle takes about one second; report mode emits its measurements after sampling completes.
 
 ### `netscope arp-scan`
 
@@ -92,6 +114,8 @@ netscope main         # same as running netscope with no args
   ```
 
 ## Reports
+
+From the interactive menu, choose **Generate HTML Report** to select a recent saved run and write `report.html` into its run directory.
 
 ### `netscope report`
 
@@ -173,4 +197,3 @@ netscope main         # same as running netscope with no args
   ```bash
   netscope main
   ```
-

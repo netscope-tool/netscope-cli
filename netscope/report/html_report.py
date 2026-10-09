@@ -1,268 +1,165 @@
-"""
-HTML report generator for a single NetScope run directory.
-
-Given a run directory (with `metadata.json` and `results.csv`), this module
-generates a self-contained `report.html` summarizing tests and key metrics.
-"""
-
+"""Self-contained terminal-inspired HTML report generation."""
 from __future__ import annotations
 
 import csv
+import html
 import json
 from pathlib import Path
 from typing import Any, Dict, List
 
 
 def load_run_data(run_dir: Path) -> Dict[str, Any]:
-    """
-    Load metadata and CSV rows from a run directory.
-
-    Returns a dict with:
-      - metadata: dict from metadata.json (or {})
-      - rows: list of CSV rows (each a dict)
-    """
     data: Dict[str, Any] = {"metadata": {}, "rows": []}
-
     meta_path = run_dir / "metadata.json"
     if meta_path.exists():
         try:
             data["metadata"] = json.loads(meta_path.read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             data["metadata"] = {}
-
     csv_path = run_dir / "results.csv"
     if csv_path.exists():
         try:
-            with csv_path.open("r", encoding="utf-8", newline="") as f:
-                reader = csv.DictReader(f)
-                data["rows"] = list(reader)
-        except Exception:
+            with csv_path.open("r", encoding="utf-8", newline="") as stream:
+                data["rows"] = list(csv.DictReader(stream))
+        except (OSError, csv.Error):
             data["rows"] = []
-
     return data
 
 
-def _group_rows_by_test(rows: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]]:
+def _escape(value: Any) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def _display_value(value: Any) -> str:
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+            if isinstance(decoded, (dict, list)):
+                return json.dumps(decoded, ensure_ascii=False, indent=2, sort_keys=True)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return str(value)
+
+
+def _group_rows(rows: List[Dict[str, str]]) -> Dict[str, List[Dict[str, str]]]:
     grouped: Dict[str, List[Dict[str, str]]] = {}
     for row in rows:
-        test_name = row.get("test_name", "Unknown")
-        grouped.setdefault(test_name, []).append(row)
+        grouped.setdefault(row.get("test_name") or "Run metrics", []).append(row)
     return grouped
 
 
-def _escape(text: Any) -> str:
-    """Basic HTML escaping."""
-    s = str(text)
+def _metric_table(rows: List[Dict[str, str]]) -> str:
+    seen: Dict[str, str] = {}
+    for row in rows:
+        metric = row.get("metric")
+        if metric:
+            seen[metric] = row.get("value", "")
+    if not seen:
+        return '<p class="muted">No structured metrics were recorded.</p>'
+    body = "".join(
+        "<tr><th scope=\"row\">" + _escape(name.replace("_", " ").title())
+        + "</th><td><pre>" + _escape(_display_value(value)) + "</pre></td></tr>"
+        for name, value in seen.items()
+    )
+    return '<table><tbody>' + body + '</tbody></table>'
+
+
+def _raw_evidence(run_dir: Path) -> str:
+    raw_dir = run_dir / "raw_output"
+    if not raw_dir.is_dir():
+        return ""
+    items = []
+    for path in sorted(raw_dir.iterdir()):
+        if not path.is_file():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        was_truncated = len(content) > 200_000
+        if was_truncated:
+            content = content[:200_000] + "\\n\\n[Report preview truncated; see original evidence file.]"
+        items.append(
+            f'<details><summary>Raw evidence · {_escape(path.name)}</summary>'
+            f'<pre>{_escape(content)}</pre></details>'
+        )
     return (
-        s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-        .replace("'", "&#39;")
+        '<section class="block"><h2>Raw evidence</h2>' + "".join(items) + '</section>'
+        if items else ""
     )
 
 
 def generate_html(run_dir: Path) -> str:
-    """
-    Generate HTML string for a single run directory.
-    """
     data = load_run_data(run_dir)
-    meta = data.get("metadata") or {}
+    metadata = data.get("metadata") or {}
     rows: List[Dict[str, str]] = data.get("rows") or []
+    test_type = metadata.get("test_type", "Network test")
+    target = metadata.get("target", "—")
+    status = str(metadata.get("status", "unknown")).lower()
+    timestamp = metadata.get("timestamp", "—")
+    duration = metadata.get("duration_seconds")
+    run_summary = next((row.get("details") for row in rows if row.get("details")), "")
+    mode = metadata.get("scan_profile")
+    cycles = metadata.get("cycles")
+    ports = metadata.get("ports")
+    timeout = metadata.get("timeout_seconds")
+    status_class = status if status in {"success", "warning", "failure"} else "unknown"
+    system_info = metadata.get("system_info") or {}
+    grouped = _group_rows(rows)
+    evidence = _raw_evidence(run_dir)
 
-    test_type = meta.get("test_type", "Unknown Test")
-    target = meta.get("target", "—")
-    status = meta.get("status", "—")
-    system_info = meta.get("system_info") or {}
-    timestamp = meta.get("timestamp", "")
-
-    grouped = _group_rows_by_test(rows)
-
-    # Aggregate simple data for charts: test status counts
-    status_counts = {"success": 0, "warning": 0, "failure": 0}
-    for row in rows:
-        s = (row.get("status") or "").lower()
-        if s in status_counts:
-            status_counts[s] += 1
-
-    # Simple CSS for a clean report
-    css = """
-body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-       background: #0b1020; color: #f5f5f7; margin: 0; padding: 0; }
-header { background: linear-gradient(90deg, #2563eb, #14b8a6); padding: 1.5rem 2rem; color: white; }
-header h1 { margin: 0 0 0.3rem 0; font-size: 1.6rem; }
-header p { margin: 0.1rem 0; opacity: 0.9; }
-main { padding: 1.5rem 2rem 2rem 2rem; }
-.card { background: #111827; border-radius: 0.75rem; padding: 1rem 1.2rem; margin-bottom: 1rem;
-        border: 1px solid #1f2937; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-.badge { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; font-size: 0.75rem; }
-.badge-success { background: #065f46; color: #bbf7d0; }
-.badge-warning { background: #92400e; color: #fed7aa; }
-.badge-failure { background: #7f1d1d; color: #fecaca; }
-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
-th, td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #1f2937; text-align: left; }
-th { color: #e5e7eb; font-weight: 600; }
-tr:nth-child(even) { background: #020617; }
-.section-title { font-size: 1.1rem; margin-bottom: 0.3rem; }
-.muted { color: #9ca3af; font-size: 0.85rem; }
-.pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; background: #111827;
-        border: 1px solid #1f2937; font-size: 0.75rem; margin-right: 0.25rem; color: #9ca3af; }
-code { background: #020617; padding: 0.05rem 0.3rem; border-radius: 0.25rem; }
-    """
-
-    def status_badge(value: str) -> str:
-        v = (value or "").lower()
-        if v == "success":
-            return '<span class="badge badge-success">SUCCESS</span>'
-        if v == "warning":
-            return '<span class="badge badge-warning">WARNING</span>'
-        if v == "failure":
-            return '<span class="badge badge-failure">FAILURE</span>'
-        return f'<span class="badge">{_escape(value)}</span>'
-
-    # Header HTML
-    header_html = f"""
-<header>
-  <h1>NetScope Report</h1>
-  <p><strong>Test:</strong> {_escape(test_type)}</p>
-  <p><strong>Target:</strong> {_escape(target)} &nbsp; {status_badge(status)}</p>
-  <p class="muted">{_escape(timestamp)}</p>
-</header>
-"""
-
-    # System info card
-    sys_rows = []
-    if isinstance(system_info, dict) and system_info:
-        for key, value in system_info.items():
-            sys_rows.append(f"<div><span class='pill'>{_escape(key)}</span> {_escape(value)}</div>")
-    sys_html = (
-        "<div class='card'>"
-        "<div class='section-title'>System Information</div>"
-        + ("".join(sys_rows) if sys_rows else "<div class='muted'>No system information available.</div>")
-        + "</div>"
+    mode_fact = f'<div><span class="label">PROFILE</span><code>{_escape(mode)}</code></div>' if mode else ""
+    cycle_fact = f'<div><span class="label">CYCLES</span><code>{_escape(cycles)}</code></div>' if cycles is not None else ""
+    ports_fact = f'<div><span class="label">PORTS</span><code>{_escape(ports)}</code></div>' if ports else ""
+    timeout_fact = f'<div><span class="label">TIMEOUT</span><code>{_escape(timeout)}s</code></div>' if timeout is not None else ""
+    summary = (
+        f'<section class="summary"><div><span class="label">TARGET</span><code>{_escape(target)}</code></div>'
+        f'<div><span class="label">STATUS</span><span class="status {status_class}">{_escape(status.upper())}</span></div>'
+        f'<div><span class="label">DURATION</span><code>{_escape(f"{float(duration):.2f}s") if isinstance(duration, (int, float)) else "—"}</code></div>'
+        f'{mode_fact}{cycle_fact}{ports_fact}{timeout_fact}<div><span class="label">RUN</span><code>{_escape(timestamp)}</code></div></section>'
     )
-
-    # Per-test sections
-    sections: List[str] = []
-    for test_name, test_rows in grouped.items():
-        # Collect key metrics (as last values per metric name)
-        metrics: Dict[str, str] = {}
-        for row in test_rows:
-            metric = row.get("metric") or ""
-            if metric:
-                metrics[metric] = row.get("value", "")
-
-        # Build a small metrics table (metric -> value)
-        metrics_rows_html = ""
-        if metrics:
-            metrics_rows_html = "<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>"
-            for m_name, m_val in metrics.items():
-                metrics_rows_html += (
-                    f"<tr><td>{_escape(m_name.replace('_', ' ').title())}</td>"
-                    f"<td>{_escape(m_val)}</td></tr>"
-                )
-            metrics_rows_html += "</tbody></table>"
-        else:
-            metrics_rows_html = "<div class='muted'>No metrics recorded for this test.</div>"
-
-        sections.append(
-            "<div class='card'>"
-            f"<div class='section-title'>{_escape(test_name)}</div>"
-            + metrics_rows_html
-            + "</div>"
-        )
-
+    narrative = (
+        f'<section class="block"><h2>Run summary</h2><p>{_escape(run_summary)}</p></section>'
+        if run_summary else ""
+    )
+    system_html = ""
+    if isinstance(system_info, dict) and system_info:
+        system_html = '<section class="block"><h2>Environment</h2><table><tbody>' + "".join(
+            f'<tr><th scope="row">{_escape(key.replace("_", " ").title())}</th><td><pre>{_escape(_display_value(value))}</pre></td></tr>'
+            for key, value in system_info.items()
+        ) + '</tbody></table></section>'
+    sections = "".join(
+        f'<section class="block"><h2>{_escape(name)}</h2>{_metric_table(test_rows)}</section>'
+        for name, test_rows in grouped.items()
+    )
     if not sections:
-        sections.append(
-            "<div class='card'><div class='muted'>No metrics were recorded for this run.</div></div>"
-        )
+        sections = '<section class="block"><p class="muted">No structured results are available for this run.</p></section>'
 
-    body_html = "<main>" + sys_html + "".join(sections) + "</main>"
-
-    # Basic chart data (tests by status)
-    chart_labels = ["SUCCESS", "WARNING", "FAILURE"]
-    chart_values = [
-        status_counts["success"],
-        status_counts["warning"],
-        status_counts["failure"],
-    ]
-
-    charts_html = """
-<div class="card">
-  <div class="section-title">Tests by Status</div>
-  <canvas id="statusChart" height="120"></canvas>
-</div>
+    css = """
+:root{color-scheme:dark;--bg:#181715;--surface:#201f1c;--line:#3b3934;--text:#eeeae2;--muted:#aaa59a;--accent:#d97757;--green:#8db596;--yellow:#e2bd72;--red:#e27d72}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+main{max-width:1080px;margin:0 auto;padding:28px 24px 56px}header{border:1px solid var(--line);border-top:3px solid var(--accent);padding:20px 22px;background:var(--surface)}
+.kicker,.label{color:var(--accent);font-size:11px;letter-spacing:.12em}h1{font-size:21px;font-weight:600;margin:8px 0 0}h2{font-size:14px;font-weight:600;margin:0 0 14px;color:var(--text)}
+.summary{display:flex;gap:28px;flex-wrap:wrap;border:1px solid var(--line);border-top:0;padding:14px 20px;background:#1c1b18}.summary>div{display:flex;gap:10px;align-items:center}.status{font-weight:700}.status.success{color:var(--green)}.status.warning{color:var(--yellow)}.status.failure{color:var(--red)}.status.unknown{color:var(--muted)}
+.block{margin-top:18px;border:1px solid var(--line);background:var(--surface);padding:18px 20px}table{width:100%;border-collapse:collapse}th,td{padding:9px 10px;border-top:1px solid var(--line);text-align:left;vertical-align:top}th{width:27%;font-weight:500;color:var(--muted)}pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;color:var(--text);font:inherit}code{color:#f0b397;background:#171613;padding:2px 5px}.muted{color:var(--muted)}footer{margin-top:20px;color:var(--muted);font-size:11px}
+@media(max-width:640px){main{padding:14px 10px 32px}.block{padding:14px 12px}.summary{gap:12px;flex-direction:column}th{width:35%}}
 """
-
-    body_html = "<main>" + sys_html + charts_html + "".join(sections) + "</main>"
-
-    # Inline Chart.js (via CDN) and initialization script
-    chart_js = f"""
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  const ctx = document.getElementById('statusChart').getContext('2d');
-  new Chart(ctx, {{
-    type: 'bar',
-    data: {{
-      labels: {chart_labels},
-      datasets: [{{
-        label: 'Tests',
-        data: {chart_values},
-        backgroundColor: ['#22c55e', '#eab308', '#ef4444'],
-      }}],
-    }},
-    options: {{
-      responsive: true,
-      plugins: {{
-        legend: {{ display: false }},
-      }},
-      scales: {{
-        x: {{
-          ticks: {{ color: '#e5e7eb' }},
-        }},
-        y: {{
-          beginAtZero: true,
-          ticks: {{ color: '#9ca3af', precision: 0 }},
-        }},
-      }},
-    }},
-  }});
-</script>
-"""
-
-    html = f"""<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>NetScope Report - {_escape(test_type)}</title>
-    <style>{css}</style>
-  </head>
-  <body>
-    {header_html}
-    {body_html}
-    {chart_js}
-  </body>
-</html>
-"""
-    return html
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NetScope run report · {_escape(test_type)}</title><style>{css}</style></head>
+<body><main><header><div class="kicker">NETSCOPE / RUN REPORT</div><h1>{_escape(test_type)}</h1></header>
+{summary}{narrative}{system_html}{sections}{evidence}<footer>Generated from local NetScope run data · Raw evidence remains in this run directory.</footer></main></body></html>"""
 
 
 def generate_html_report(run_dir: Path, output_file: Path | None = None) -> Path:
-    """
-    Generate an HTML report for `run_dir`.
-
-    Args:
-        run_dir: Path to a single test run directory.
-        output_file: Optional explicit output HTML path. If None, writes `report.html`
-            inside the run directory.
-
-    Returns:
-        Path to the generated HTML file.
-    """
     run_dir = run_dir.resolve()
-    if output_file is None:
-        output_file = run_dir / "report.html"
-    html = generate_html(run_dir)
-    output_file.write_text(html, encoding="utf-8")
-    return output_file
-
+    if not run_dir.is_dir():
+        raise NotADirectoryError(run_dir)
+    destination = output_file or run_dir / "report.html"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(generate_html(run_dir), encoding="utf-8")
+    return destination

@@ -4,6 +4,7 @@ Nmap-based port and service scanner (optional dependency).
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
@@ -11,6 +12,12 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from netscope.modules.base import BaseTest, TestResult
+
+NMAP_PROFILES = {
+    "connect": ["-sT", "-T3", "-F", "-n"],
+    "service": ["-sT", "-sV", "--version-light", "-T3", "-n"],
+    "udp": ["-sU", "--top-ports", "20", "-T2", "-n"],
+}
 
 
 def has_nmap() -> bool:
@@ -40,7 +47,7 @@ def run_nmap_xml(
     cmd.extend(extra_args)
     if ports:
         cmd.extend(["-p", ports])
-    cmd.append(target)
+    cmd.extend(["--", target])
 
     return subprocess.run(
         cmd,
@@ -190,8 +197,17 @@ class NmapScanTest(BaseTest):
         ports: Optional[str] = None,
         extra_args: Optional[List[str]] = None,
         timeout: int = 120,
+        profile: str = "service",
     ) -> TestResult:
         start_time = datetime.now()
+
+        if extra_args is None:
+            if profile not in NMAP_PROFILES:
+                raise ValueError(f"Unknown Nmap profile {profile!r}; choose one of {', '.join(NMAP_PROFILES)}.")
+            extra_args = list(NMAP_PROFILES[profile])
+            # A custom port list supersedes the UDP profile's built-in top-20 list.
+            if profile == "udp" and ports:
+                extra_args = [arg for arg in extra_args if arg not in {"--top-ports", "20"}]
 
         if not has_nmap():
             summary = (
@@ -232,6 +248,8 @@ class NmapScanTest(BaseTest):
         duration = (datetime.now() - start_time).total_seconds()
         success = proc.returncode == 0
         metrics = parse_nmap_xml(proc.stdout) if success else {}
+        if success:
+            metrics["profile"] = profile
 
         if success:
             status = "success"
@@ -267,15 +285,21 @@ class NmapScanTest(BaseTest):
         Log aggregate metrics (counts and open ports) to CSV.
         """
         metrics = result.metrics or {}
-        # Write counts
-        for key in ("open_count", "closed_count", "filtered_count", "hosts_up", "hosts_down"):
+        # Persist both concise counts and the structured evidence used by reports.
+        for key in (
+            "open_count", "closed_count", "filtered_count", "hosts_up", "hosts_down",
+            "profile", "services", "closed_ports", "filtered_ports",
+        ):
             if key in metrics:
+                value = metrics[key]
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value, sort_keys=True)
                 self.csv_handler.write_result(
                     timestamp=result.timestamp,
                     test_name=result.test_name,
                     target=result.target,
                     metric=key,
-                    value=metrics[key],
+                    value=value,
                     status=result.status,
                     details=result.summary or "",
                 )
@@ -291,4 +315,3 @@ class NmapScanTest(BaseTest):
                 status=result.status,
                 details=result.summary or "",
             )
-

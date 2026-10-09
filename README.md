@@ -37,6 +37,8 @@ On many systems it’s better to use a virtual environment so you don’t instal
 Optional features (nmap, speedtest, etc.):  
 `pip install netscope-cli[security]` · `pip install netscope-cli[bandwidth]` · `pip install netscope-cli[all]`
 
+Install `netscope-cli[reports]` only if you plan to execute generated Jupyter notebooks; the terminal and HTML reporting paths do not require pandas.
+
 ## Features
 
 - ✅ Cross-platform OS detection (Linux, macOS, Windows)
@@ -45,6 +47,8 @@ Optional features (nmap, speedtest, etc.):
 - ✅ Traceroute path analysis (with hop table)
 - ✅ DNS resolution testing (IPv4/IPv6 aware)
 - ✅ Pure-Python port scan (top ports) + optional nmap integration
+- ✅ MTR per-hop latency and packet-loss reports (optional system `mtr`)
+- ✅ Website snapshot: TLS certificate, HTTP security headers, and passive Certificate Transparency names
 - ✅ ARP scan and ping sweep for local discovery
 - ✅ CSV logging with timestamps + structured logs
 - ✅ HTML reports and Jupyter notebook reports per run
@@ -54,6 +58,7 @@ For a deeper guide, see:
 
 - `docs/manual.md` – concepts, tests, interpreting results, reports.
 - `docs/cli-reference.md` – full command and option reference.
+- `docs/terminal-product-direction.md` – guided terminal UI, reporting, and capability roadmap.
 
 ## Development / install from source
 
@@ -142,7 +147,13 @@ You’ll see a header, system information, and then a menu where you can choose:
 - ARP Scan  
 - Speedtest (optional; will prompt to install `speedtest-cli` if missing)  
 - Ping Sweep  
+- Website Audit (HTTP/TLS and passive certificate names)
+- MTR Route Quality (if `mtr` is installed)
+- Dashboard (aggregated local network and system view)
+- Generate HTML Report (choose a saved run from a recent-runs menu)
 - Exit
+
+The guided report option creates `report.html` in the selected run folder; no report command or path entry is needed.
 
 ### Non-interactive mode (scripts / automation)
 
@@ -166,6 +177,14 @@ netscope ports 192.168.1.1 --preset top100
 
 # Nmap-based scan (if nmap is installed)
 netscope nmap-scan example.com
+netscope nmap-scan example.com --profile connect
+netscope nmap-scan example.com --profile udp --ports 53,123,161
+
+# Website headers, TLS certificate, and passive Certificate Transparency names
+netscope website-audit https://example.com
+
+# Per-hop packet loss and latency report (if mtr is installed)
+netscope mtr example.com --cycles 10
 
 # ARP scan (local devices)
 netscope arp-scan
@@ -246,9 +265,11 @@ Version is defined in `pyproject.toml`, `setup.py`, and optionally `netscope/__v
 
 ### Linux
 - `ping`, `traceroute`, `dig` (usually pre-installed)
+- Optional: `mtr` for the MTR route-quality report
 
 ### macOS
 - `ping`, `traceroute`, `dig` (pre-installed)
+- Optional: `mtr` (for example, installed with Homebrew)
 
 ### Windows
 - `ping`, `tracert`, `nslookup` (pre-installed)
