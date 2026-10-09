@@ -3,7 +3,6 @@ User-friendly CLI helpers for advanced test options.
 Provides simple and expert modes for configuring tests.
 """
 
-from typing import Optional
 import questionary
 from questionary import Choice
 
@@ -35,7 +34,7 @@ def prompt_ping_options(simple_mode: bool = True) -> PingOptions:
             Choice("100 (Stress test)", value=100),
             Choice("Custom", value="custom"),
         ],
-        default="10 (Standard)"
+        default=10,
     ).ask()
     
     if count_choice == "custom":
@@ -52,14 +51,14 @@ def prompt_ping_options(simple_mode: bool = True) -> PingOptions:
     packet_size_choice = questionary.select(
         "Packet size (for MTU testing)?",
         choices=[
-            Choice("Default (56 bytes)", value=None),
+            Choice("Default (56 bytes)", value="default"),
             Choice("512 bytes", value=512),
             Choice("1024 bytes (1 KB)", value=1024),
             Choice("1472 bytes (Max for standard MTU)", value=1472),
             Choice("8192 bytes (8 KB)", value=8192),
             Choice("Custom", value="custom"),
         ],
-        default="Default (56 bytes)"
+        default="default",
     ).ask()
     
     if packet_size_choice == "custom":
@@ -69,7 +68,7 @@ def prompt_ping_options(simple_mode: bool = True) -> PingOptions:
             validate=lambda x: x.isdigit() and 0 <= int(x) <= 65507
         ).ask()
         options.packet_size = int(size_str)
-    elif packet_size_choice is not None:
+    elif packet_size_choice not in (None, "default"):
         options.packet_size = packet_size_choice
     
     if not simple_mode:
@@ -79,29 +78,29 @@ def prompt_ping_options(simple_mode: bool = True) -> PingOptions:
         interval_choice = questionary.select(
             "Interval between pings?",
             choices=[
-                Choice("Default (1 second)", value=None),
+                Choice("Default (1 second)", value="default"),
                 Choice("0.2 seconds (Fast)", value=0.2),
                 Choice("0.5 seconds", value=0.5),
                 Choice("2 seconds (Slow)", value=2.0),
                 Choice("5 seconds (Very slow)", value=5.0),
             ],
-            default="Default (1 second)"
+            default="default",
         ).ask()
-        options.interval = interval_choice
+        options.interval = None if interval_choice == "default" else interval_choice
         
         # Timeout
         timeout_choice = questionary.select(
             "Timeout per ping?",
             choices=[
-                Choice("Default (system)", value=None),
+                Choice("Default (system)", value="default"),
                 Choice("1 second", value=1),
                 Choice("2 seconds", value=2),
                 Choice("5 seconds", value=5),
                 Choice("10 seconds", value=10),
             ],
-            default="Default (system)"
+            default="default",
         ).ask()
-        options.timeout = timeout_choice
+        options.timeout = None if timeout_choice == "default" else timeout_choice
         
         # TTL
         ttl_choice = questionary.confirm(
@@ -151,7 +150,7 @@ def prompt_dns_options(simple_mode: bool = True) -> DNSOptions:
                 Choice("TXT (Text records)", value="TXT"),
                 Choice("More types...", value="more"),
             ],
-            default="A (IPv4 address)"
+            default="A",
         ).ask()
         
         if record_choice == "more":
@@ -164,7 +163,7 @@ def prompt_dns_options(simple_mode: bool = True) -> DNSOptions:
                     Choice("PTR (Reverse lookup)", value="PTR"),
                     Choice("ANY (All records)", value="ANY"),
                 ],
-                default="NS (Name servers)"
+                default="NS",
             ).ask()
         
         options.record_type = record_choice
@@ -184,7 +183,7 @@ def prompt_dns_options(simple_mode: bool = True) -> DNSOptions:
                 Choice("SRV (Service records)", value="SRV"),
                 Choice("ANY (All records)", value="ANY"),
             ],
-            default="A (IPv4 address)"
+            default="A",
         ).ask()
         options.record_type = record_choice
     
@@ -205,7 +204,7 @@ def prompt_dns_options(simple_mode: bool = True) -> DNSOptions:
                     Choice("OpenDNS (208.67.222.222)", value="208.67.222.222"),
                     Choice("Custom IP", value="custom"),
                 ],
-                default="Google (8.8.8.8)"
+                default="8.8.8.8",
             ).ask()
             
             if dns_choice == "custom":
@@ -226,7 +225,7 @@ def prompt_dns_options(simple_mode: bool = True) -> DNSOptions:
                 Choice("10 seconds (Slow)", value=10),
                 Choice("30 seconds (Very slow)", value=30),
             ],
-            default="5 seconds (Default)"
+            default=5,
         ).ask()
         options.timeout = timeout_choice
         
@@ -268,7 +267,7 @@ def prompt_port_scan_options(simple_mode: bool = True) -> PortScanOptions:
                 Choice("1 second (Fast)", value=1.0),
                 Choice("5 seconds (Slow)", value=5.0),
             ],
-            default="2 seconds (Default)"
+            default=2.0,
         ).ask()
         options.timeout = timeout_choice
         
@@ -291,7 +290,7 @@ def prompt_port_scan_options(simple_mode: bool = True) -> PortScanOptions:
                 Choice("5 seconds (Slow)", value=5.0),
                 Choice("10 seconds (Very slow)", value=10.0),
             ],
-            default="2 seconds (Default)"
+            default=2.0,
         ).ask()
         options.timeout = timeout_choice
         
@@ -304,7 +303,7 @@ def prompt_port_scan_options(simple_mode: bool = True) -> PortScanOptions:
                 Choice("128 (Aggressive)", value=128),
                 Choice("256 (Very aggressive)", value=256),
             ],
-            default="64 (Default)"
+            default=64,
         ).ask()
         options.max_workers = workers_choice
         
@@ -345,7 +344,7 @@ def prompt_mode_selection() -> bool:
             Choice("🎯 Simple - Quick setup with common options", value="simple"),
             Choice("🔧 Expert - Full control over all parameters", value="expert"),
         ],
-        default="🎯 Simple - Quick setup with common options"
+        default="simple",
     ).ask()
     
     return mode == "simple"
