@@ -1,17 +1,14 @@
 """Persistent, full-screen MTR session with a non-scrolling live route table."""
 from __future__ import annotations
 
-import os
-import select
 import shutil
 import subprocess
-import sys
 import time
 from collections import deque
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Iterator, Optional
+from typing import Callable, Optional
 
 from rich.align import Align
 from rich.box import SIMPLE_HEAD
@@ -23,6 +20,7 @@ from rich.text import Text
 
 from netscope.modules.base import TestResult
 from netscope.modules.mtr import MTRTest
+from netscope.tui.terminal import single_key_reader
 
 
 @dataclass
@@ -32,38 +30,6 @@ class LiveMTRSession:
     result: Optional[TestResult]
     sample_count: int
     duration_seconds: float
-
-
-@contextmanager
-def _single_key_reader() -> Iterator[Callable[[], Optional[str]]]:
-    """Read one key without echoing it or waiting for Enter; restore the TTY."""
-    if not sys.stdin.isatty():
-        raise RuntimeError("The live MTR dashboard requires an interactive terminal.")
-
-    if os.name == "nt":
-        import msvcrt
-
-        def read_key() -> Optional[str]:
-            return msvcrt.getwch() if msvcrt.kbhit() else None
-
-        yield read_key
-        return
-
-    import termios
-    import tty
-
-    fd = sys.stdin.fileno()
-    previous = termios.tcgetattr(fd)
-    try:
-        tty.setcbreak(fd)
-
-        def read_key() -> Optional[str]:
-            ready, _, _ = select.select([sys.stdin], [], [], 0)
-            return sys.stdin.read(1) if ready else None
-
-        yield read_key
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, previous)
 
 
 def _elapsed_text(seconds: float) -> str:
@@ -197,7 +163,8 @@ def run_live_mtr_dashboard(
     process: Optional[subprocess.Popen] = None
     sample_started: Optional[datetime] = None
     state = f"Starting report batch · {cycles} cycles"
-    keyboard = nullcontext(key_reader) if key_reader is not None else _single_key_reader()
+    keyboard = nullcontext(key_reader) if key_reader is not None else single_key_reader()
+    last_frame_key = None
 
     try:
         with keyboard as read_key:
@@ -208,7 +175,8 @@ def run_live_mtr_dashboard(
                 transient=False,
                 redirect_stdout=False,
                 redirect_stderr=False,
-                refresh_per_second=4,
+                auto_refresh=False,
+                refresh_per_second=10,
             ) as live:
                 while True:
                     key = read_key()
@@ -250,13 +218,16 @@ def run_live_mtr_dashboard(
                         state = f"Updated from report batch {sample_count} · sampling next batch"
 
                     elapsed = time.monotonic() - session_started
-                    live.update(
-                        render_live_mtr_view(
-                            target, cycles, sample_count, elapsed, latest, state, console.height,
-                        ),
-                        refresh=True,
-                    )
-                    time.sleep(0.25)
+                    frame_key = (state, sample_count, latest.timestamp if latest else None, int(elapsed))
+                    if frame_key != last_frame_key:
+                        live.update(
+                            render_live_mtr_view(
+                                target, cycles, sample_count, elapsed, latest, state, console.height,
+                            ),
+                            refresh=True,
+                        )
+                        last_frame_key = frame_key
+                    time.sleep(0.1)
     except KeyboardInterrupt:
         state = "Stopped with Ctrl+C"
     finally:

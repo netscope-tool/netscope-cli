@@ -84,7 +84,9 @@ def test_nmap_profile_arguments_replace_defaults_and_delimit_target(monkeypatch)
     monkeypatch.setattr("netscope.modules.nmap_scan.subprocess.run", fake_run)
     run_nmap_xml("-example.invalid", ports="443", extra_args=NMAP_PROFILES["connect"])
     command = observed["command"]
-    assert "-sT" in command and "-F" in command
+    assert "-sT" in command and "-F" not in command
+    assert command[command.index("-p") + 1] == "443"
+    assert "--stats-every" in command
     assert "-sV" not in command
     assert command[-2:] == ["--", "-example.invalid"]
 

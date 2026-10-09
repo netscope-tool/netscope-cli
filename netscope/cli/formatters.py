@@ -6,15 +6,17 @@ import socket
 import urllib.request
 from typing import Iterable, Sequence
 
+from rich.align import Align
 from rich.console import Console
-from netscope.tui.theme import NETSCOPE_THEME
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
-from rich.align import Align
+from rich.text import Text
 
-from netscope.modules.base import TestResult
 from netscope.core.detector import SystemInfo
-from netscope.utils.network_info import NetworkInfo, get_network_info
+from netscope.modules.base import TestResult
+from netscope.tui.theme import NETSCOPE_THEME
+from netscope.utils.network_info import get_network_info
 
 # Cache for network status so we don't re-fetch every time we print the widget
 _network_status_cache: dict | None = None
@@ -96,12 +98,12 @@ def format_test_result(result: TestResult, console: Console) -> None:
 
     # Build content
     content: list[str] = []
-    content.append(f"[bold]Target:[/bold] {result.target}")
+    content.append(f"[bold]Target:[/bold] {escape(result.target)}")
     content.append(f"[bold]Status:[/bold] [{status_color}]{result.status.upper()}[/{status_color}]")
     content.append(f"[bold]Duration:[/bold] {result.duration:.2f}s")
 
     if result.summary:
-        content.append(f"\n[bold]Summary:[/bold]\n{result.summary}")
+        content.append(f"\n[bold]Summary:[/bold]\n{escape(result.summary)}")
 
     # Add metrics heading if metrics exist (table printed separately)
     if result.metrics:
@@ -195,10 +197,66 @@ def format_test_result(result: TestResult, console: Console) -> None:
         for item in services[:40]:
             product = " ".join(str(item.get(key) or "") for key in ("product", "version")).strip()
             service_table.add_row(
-                str(item.get("port", "—")), str(item.get("state", "—")),
-                str(item.get("service", "—")), product or "—",
+                Text(str(item.get("port", "—"))), Text(str(item.get("state", "—"))),
+                Text(str(item.get("service", "—"))), Text(product or "—"),
             )
         console.print(service_table)
+
+    nmap_hosts = (result.metrics or {}).get("hosts")
+    if isinstance(nmap_hosts, list) and nmap_hosts:
+        hosts_table = Table(title="Nmap Batch Hosts", show_header=True, box=None, padding=(0, 2))
+        hosts_table.add_column("Target", style="white")
+        hosts_table.add_column("Address", style="dim")
+        hosts_table.add_column("State", style="white")
+        hosts_table.add_column("Open ports", style="cyan")
+        hosts_table.add_column("NSE evidence", justify="right", style="yellow")
+        for host in nmap_hosts[:50]:
+            state = str(host.get("status", "unknown")).upper()
+            hosts_table.add_row(
+                Text(str(host.get("target") or "unknown")),
+                Text(str(host.get("address") or "—")),
+                Text(state, style="green" if state == "UP" else "dim"),
+                ", ".join(str(port) for port in host.get("open_ports", [])) or "—",
+                str(len(host.get("vulnerability_findings", []))),
+            )
+        if len(nmap_hosts) > 50:
+            hosts_table.add_row("…", f"+{len(nmap_hosts) - 50} more", "", "", "")
+        console.print()
+        console.print(hosts_table)
+
+    vulnerability_findings = (result.metrics or {}).get("vulnerability_findings")
+    if result.test_name == "Nmap Vulnerability Scan":
+        if isinstance(vulnerability_findings, list) and vulnerability_findings:
+            evidence_table = Table(title="NSE Vulnerability Script Evidence", show_header=True, box=None, padding=(0, 2))
+            evidence_table.add_column("Target", style="white")
+            evidence_table.add_column("Port", style="cyan")
+            evidence_table.add_column("Script", style="yellow")
+            evidence_table.add_column("Signal", style="white")
+            evidence_table.add_column("CVE IDs", style="red")
+            evidence_table.add_column("Evidence", style="dim", overflow="fold")
+            for item in vulnerability_findings[:50]:
+                port = item.get("port")
+                port_label = f"{port}/{item.get('protocol') or 'tcp'}" if port else "host"
+                evidence_table.add_row(
+                    Text(str(item.get("target") or "unknown")),
+                    port_label,
+                    Text(str(item.get("id") or "unknown")),
+                    Text(str(item.get("state") or "reported")),
+                    Text(", ".join(item.get("cve_ids", [])) or "—"),
+                    Text(str(item.get("output") or "Structured script result")),
+                )
+            if len(vulnerability_findings) > 50:
+                evidence_table.add_row("…", "", "", "", "", f"+{len(vulnerability_findings) - 50} more")
+            console.print()
+            console.print(evidence_table)
+        else:
+            console.print(
+                Panel(
+                    Text("No vulnerability-script output was reported. This is not a guarantee that the target is free of vulnerabilities."),
+                    title="Vulnerability scan coverage note",
+                    border_style="dim",
+                )
+            )
 
     subdomains = (result.metrics or {}).get("subdomains")
     if isinstance(subdomains, list):
@@ -252,7 +310,7 @@ def format_test_result(result: TestResult, console: Console) -> None:
     # Print raw output if present
     if result.raw_output:
         console.print("\n[bold cyan]Raw Output:[/bold cyan]")
-        console.print(Panel(result.raw_output[:500], border_style="dim"))
+        console.print(Panel(Text(result.raw_output[:500]), border_style="dim"))
 
     # Interpretation panel (what this means)
     interpretation = get_interpretation(result)

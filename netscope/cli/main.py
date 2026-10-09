@@ -8,16 +8,15 @@ import json
 import sys
 import threading
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, List, Optional
 
 import questionary
-from questionary import Choice
 import typer
+from questionary import Choice
 from rich.console import Console
 from rich.live import Live
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.spinner import Spinner
-from netscope.tui.theme import NETSCOPE_THEME
 
 from netscope.cli.formatters import (
     format_quick_check_summary,
@@ -31,18 +30,29 @@ from netscope.cli.formatters import (
 from netscope.core.config import AppConfig
 from netscope.core.detector import SystemDetector
 from netscope.core.executor import TestExecutor
+from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
+from netscope.modules.bandwidth import (
+    BandwidthTest,
+    is_speedtest_available,
+    list_speedtest_servers,
+    try_install_speedtest_cli,
+)
 from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
-from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortScanTest
-from netscope.modules.nmap_scan import NmapScanTest
 from netscope.modules.mtr import MTRTest
-from netscope.modules.website_audit import WebsiteAuditTest
-from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
+from netscope.modules.nmap_scan import (
+    NMAP_VULN_SCRIPT_EXPRESSION,
+    NmapScanTest,
+    normalize_targets,
+    validate_vulnerability_scope,
+)
 from netscope.modules.ping_sweep import PingSweepTest
-from netscope.modules.bandwidth import BandwidthTest, list_speedtest_servers, is_speedtest_available, try_install_speedtest_cli
+from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortScanTest
+from netscope.modules.website_audit import WebsiteAuditTest
 from netscope.parallel.executor import BatchTestRunner, ParallelTestConfig
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
+from netscope.tui.theme import NETSCOPE_THEME
 
 app = typer.Typer(
     name="netscope",
@@ -456,23 +466,30 @@ def _run_interactive(
                         Choice("Service details · light version probe", value="service"),
                         Choice("Quick TCP inventory · no version probe", value="connect"),
                         Choice("Top 20 UDP ports · slower, privilege may be required", value="udp"),
+                        Choice("Safe vulnerability checks · top 20 TCP ports, no exploit/DoS scripts", value="vuln"),
                     ],
                     default="service",
                 ).ask()
                 if profile is None:
                     continue
+                if profile == "vuln":
+                    try:
+                        validate_vulnerability_scope([target])
+                    except ValueError as exc:
+                        console.print(f"[red]Invalid vulnerability-scan scope: {exc}[/red]")
+                        continue
+                    if not questionary.confirm(
+                        "Confirm you are authorized to run vulnerability checks against this target?", default=False,
+                    ).ask():
+                        console.print("[dim]Vulnerability scan cancelled; no scan was started.[/dim]")
+                        continue
                 test = NmapScanTest(executor, csv_handler)
-                _result_holder = []
-
-                def _run():
-                    _result_holder.append(test.run(target, profile=profile))
-
-                _t = threading.Thread(target=_run)
-                _t.start()
-                with Live(Spinner("dots", text="Running nmap scan…"), console=console, refresh_per_second=8):
-                    while _t.is_alive():
-                        _t.join(timeout=0.05)
-                result = _result_holder[0]
+                from netscope.tui.nmap_live import run_live_nmap_dashboard
+                live_nmap = run_live_nmap_dashboard(
+                    [target], test, console, profile=profile,
+                    timeout=600 if profile == "vuln" else 120,
+                )
+                result = live_nmap.result
                 _save_raw_output(test_run_dir, "nmap.xml", result.raw_output)
                 results = [result]
             elif choice == "MTR Route Quality":
@@ -569,6 +586,7 @@ def _run_interactive(
                     pass
                 else:
                     from datetime import datetime as _dt
+
                     from netscope.modules.base import TestResult as _TestResult
                     test = BandwidthTest(executor, csv_handler, method="speedtest")
                     _result_holder = []
@@ -639,6 +657,12 @@ def _run_interactive(
                 }
                 if choice == "Nmap Scan":
                     metadata["scan_profile"] = profile
+                    metadata["targets"] = primary_result.metrics.get("targets", [target])
+                    metadata["target_count"] = primary_result.metrics.get("target_count", 1)
+                    metadata["vulnerability_script_expression"] = (
+                        "vuln and safe and not intrusive and not external and not dos and not exploit"
+                        if profile == "vuln" else None
+                    )
                 if choice == "MTR Route Quality" and live_session is not None:
                     metadata["live_session"] = True
                     metadata["live_sample_count"] = live_session.sample_count
@@ -730,8 +754,9 @@ def explain(
     """
     Explain what a test does, when to use it, how to interpret results, and related tests.
     """
-    from netscope.cli.explain_content import get_explain_content
     from rich.panel import Panel
+
+    from netscope.cli.explain_content import get_explain_content
 
     pair = get_explain_content(test_name)
     if pair is None:
@@ -762,8 +787,9 @@ def glossary(
     """
     Explain networking terms. Run with no argument to list all terms.
     """
-    from netscope.cli.glossary_content import get_glossary_entry, list_glossary_terms
     from rich.panel import Panel
+
+    from netscope.cli.glossary_content import get_glossary_entry, list_glossary_terms
 
     if term is None or term.strip() == "":
         terms = list_glossary_terms()
@@ -1170,7 +1196,7 @@ def ports(
 
 @app.command(name="nmap-scan")
 def nmap_scan(
-    target: str = typer.Argument(..., help="Target IP or hostname (shortcuts: localhost, gateway, dns)"),
+    targets: List[str] = typer.Argument(..., help="One or more target hostnames/IPs (maximum 32)."),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output",
@@ -1198,37 +1224,67 @@ def nmap_scan(
     profile: str = typer.Option(
         "service",
         "--profile",
-        help="Scan profile: connect (quick TCP), service (light version detection), or udp (top 20 UDP).",
+        help="Scan profile: connect, service, udp, or vuln (bounded safe NSE checks).",
     ),
     timeout: int = typer.Option(120, "--timeout", min=1, max=3600, help="Maximum scan duration in seconds."),
+    live: bool = typer.Option(True, "--live/--once", help="Use the fullscreen live dashboard in a TTY; --once runs a finite scan."),
 ):
     """
-    Run an nmap-based port and service scan (requires `nmap` to be installed).
+    Run a bounded Nmap scan against one or more explicitly named hosts.
     """
-    target = _resolve_target(target)
+    if profile not in {"connect", "service", "udp", "vuln"}:
+        console.print("[red]Profile must be one of: connect, service, udp, vuln.[/red]")
+        raise typer.Exit(2)
+    try:
+        resolved_targets = normalize_targets([_resolve_target(target) for target in targets])
+        if profile == "vuln":
+            resolved_targets = validate_vulnerability_scope(resolved_targets, ports)
+            if timeout > 900:
+                raise ValueError("Vulnerability-scan timeout is capped at 900 seconds.")
+    except ValueError as exc:
+        console.print(f"[red]Invalid Nmap scope: {exc}[/red]")
+        raise typer.Exit(2)
+
     config, logger, _detector, system_info = _init_context(output_dir, verbose)
-    test_run_dir = config.create_test_run_dir("nmap_scan")
+    test_run_dir = config.create_test_run_dir("nmap_vulnerability_scan" if profile == "vuln" else "nmap_scan")
     csv_handler = CSVHandler(test_run_dir / "results.csv")
     executor = TestExecutor(system_info, logger)
 
-    if profile not in {"connect", "service", "udp"}:
-        console.print("[red]Profile must be one of: connect, service, udp.[/red]")
-        raise typer.Exit(2)
-    scope = ports or {"connect": "fast top 100 TCP", "service": "Nmap default TCP ports", "udp": "top 20 UDP"}[profile]
-    console.print(f"\n[bold cyan]Nmap · {profile} · target {target} · scope {scope} · timeout {timeout}s[/bold cyan]")
-    console.print("[dim]Scan only systems you are authorized to assess.[/dim]\n")
+    scope = ports or {
+        "connect": "fast top 100 TCP", "service": "Nmap default TCP ports",
+        "udp": "top 20 UDP", "vuln": "top 20 TCP + safe NSE vulnerability checks",
+    }[profile]
+    use_live = live and output_format != "json" and sys.stdin.isatty() and sys.stdout.isatty()
+    if output_format != "json":
+        console.print(
+            f"\n[bold cyan]Nmap · {profile} · targets {len(resolved_targets)} · "
+            f"scope {scope} · timeout {timeout}s[/bold cyan]"
+        )
+        console.print("[dim]Scan only systems you are authorized to assess. Vulnerability scripts are selected from safe NSE categories; results are evidence, not proof.[/dim]\n")
+        if live and not use_live:
+            console.print("[dim]No interactive terminal detected; running one finite batch. Use --live in a TTY or --once for scripts.[/dim]")
     test = NmapScanTest(executor, csv_handler)
-    _result_holder = []
-
-    def _run() -> None:
-        _result_holder.append(test.run(target, ports=ports, profile=profile, timeout=timeout))
-
-    _t = threading.Thread(target=_run)
-    _t.start()
-    with Live(Spinner("dots", text="[dim]Running nmap scan…[/dim]"), console=console, refresh_per_second=8):
-        while _t.is_alive():
-            _t.join(timeout=0.05)
-    result = _result_holder[0]
+    live_session = None
+    if use_live:
+        from netscope.tui.nmap_live import run_live_nmap_dashboard
+        live_session = run_live_nmap_dashboard(
+            resolved_targets, test, console, profile=profile, ports=ports, timeout=timeout,
+        )
+        result = live_session.result
+    elif output_format == "json":
+        result = test.run(resolved_targets, ports=ports, profile=profile, timeout=timeout)
+    else:
+        result_holder = []
+        worker = threading.Thread(
+            target=lambda: result_holder.append(
+                test.run(resolved_targets, ports=ports, profile=profile, timeout=timeout)
+            )
+        )
+        worker.start()
+        with Live(Spinner("dots", text="[dim]Running Nmap batch…[/dim]"), console=console, refresh_per_second=8):
+            while worker.is_alive():
+                worker.join(timeout=0.05)
+        result = result_holder[0]
     _save_raw_output(test_run_dir, "nmap.xml", result.raw_output)
 
     if output_format == "json":
@@ -1236,21 +1292,26 @@ def nmap_scan(
     else:
         format_test_result(result, console)
 
-    config.save_metadata(
-        test_run_dir,
-        {
-            "test_type": "Nmap Scan",
-            "target": target,
-            "scan_profile": profile,
-            "ports": ports,
-            "timeout_seconds": timeout,
-            "status": result.status,
-            "duration_seconds": result.duration,
-            "system_info": system_info.model_dump(mode="json"),
-        },
-    )
-
-    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
+    metadata = {
+        "test_type": result.test_name,
+        "target": ", ".join(resolved_targets),
+        "targets": resolved_targets,
+        "target_count": len(resolved_targets),
+        "scan_profile": profile,
+        "ports": ports,
+        "timeout_seconds": timeout,
+        "status": result.status,
+        "duration_seconds": result.duration,
+        "live_session": bool(live_session),
+        "cancelled": live_session.cancelled if live_session else False,
+        "system_info": system_info.model_dump(mode="json"),
+    }
+    if profile == "vuln":
+        metadata["vulnerability_script_expression"] = NMAP_VULN_SCRIPT_EXPRESSION
+        metadata["scope_limit"] = "up to 16 explicit hosts and 100 numeric TCP ports per host"
+    config.save_metadata(test_run_dir, metadata)
+    if output_format != "json":
+        console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
 
 
 @app.command(name="mtr")
@@ -1399,7 +1460,7 @@ def arp_scan(
     csv_handler = CSVHandler(test_run_dir / "results.csv")
     executor = TestExecutor(system_info, logger)
 
-    console.print(f"\n[bold cyan]Running ARP Scan...[/bold cyan]\n")
+    console.print("\n[bold cyan]Running ARP Scan...[/bold cyan]\n")
     test = ARPScanTestEnhanced(executor, csv_handler)
     _result_holder = []
 
@@ -1501,7 +1562,7 @@ def speedtest(
     executor = TestExecutor(system_info, logger)
 
     target = server if server else "auto"
-    console.print(f"\n[bold cyan]Running Speedtest...[/bold cyan]")
+    console.print("\n[bold cyan]Running Speedtest...[/bold cyan]")
     if target != "auto":
         console.print(f"[dim]Server ID: {target}[/dim]\n")
     else:
@@ -1733,7 +1794,7 @@ def quick_check(
         {"name": "DNS Lookup", "func": dns_test.run, "target": target},
     ]
 
-    from rich.progress import Progress, SpinnerColumn, TextColumn, TaskProgressColumn
+    from rich.progress import Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
     with Progress(
         TextColumn("[dim]{task.description}[/dim]"),
@@ -1782,8 +1843,9 @@ def glossary(
     """
     Show glossary of networking terms. Use without a term to list all available terms.
     """
-    from netscope.cli.glossary_content import get_glossary_term, list_all_terms
     from rich.panel import Panel
+
+    from netscope.cli.glossary_content import get_glossary_term, list_all_terms
 
     if term is None:
         terms = list_all_terms()
@@ -1823,7 +1885,7 @@ def troubleshoot(
     """
     Interactive troubleshooting wizard. Answer questions to get suggested tests.
     """
-    from netscope.cli.formatters import format_test_result, format_quick_check_summary
+    from netscope.cli.formatters import format_quick_check_summary, format_test_result
     from netscope.modules.connectivity import PingTest, TracerouteTest
     from netscope.modules.dns import DNSTest
 
@@ -1939,7 +2001,6 @@ def examples():
     """
     Show common usage examples and scenarios.
     """
-    from rich.panel import Panel
     from rich.table import Table
 
     console.print("\n[bold cyan]📚 NetScope Examples[/bold cyan]\n")

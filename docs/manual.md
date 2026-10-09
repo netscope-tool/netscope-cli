@@ -88,12 +88,14 @@ work with the generated reports.
 
 ### Nmap Scan (optional)
 
-- **Command**: `netscope nmap-scan <target> [--ports ...] [--profile connect|service|udp]`
-- **What it does**: Runs `nmap` with XML output and parses open ports and services.
+- **Command**: `netscope nmap-scan <target> [<target> ...] [--ports ...] [--profile connect|service|udp|vuln]`
+- **What it does**: Runs one Nmap process over a bounded batch of explicit hosts, streams XML progress and completed hosts into an alternate-screen dashboard, and retains raw XML with the run. Press `q` or Ctrl+C to cancel and save partial evidence; `--once` selects a finite report.
 - **Key metrics**:
   - `open_ports`, `open_count`, `closed_count`, `filtered_count`
-  - `hosts_up`, `hosts_down`
+  - `hosts_up`, `hosts_down`, per-host service rows
   - `services` – per-port service details (name, product, version)
+- **Vulnerability profile**: Uses light TCP service detection and `vuln and safe and not intrusive and not external and not dos and not exploit` scripts against the top 20 TCP ports by default. It accepts at most 16 explicit targets and 100 numeric TCP ports per target, and caps the scan timeout at 900 seconds. CIDRs, address ranges, arbitrary scripts, exploit scripts, and DoS scripts are not accepted by this profile.
+- **Interpretation and scope**: Nmap's `safe` category is a risk reduction, not a zero-impact guarantee. Script output is retained as evidence and is not a severity score or proof of exploitability. Scan only systems you are authorized to assess.
 
 ### Website Exposure Audit
 - **Command**: `netscope website-audit <hostname-or-url>`
