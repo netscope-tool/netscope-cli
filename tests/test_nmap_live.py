@@ -18,6 +18,7 @@ from netscope.modules.nmap_scan import (
     validate_vulnerability_scope,
 )
 from netscope.tui import nmap_live
+from netscope.tui.terminal import AlternateScreenSession
 
 _XML = """<?xml version="1.0"?>
 <nmaprun scanner="nmap" version="7.95" xmloutputversion="1.05">
@@ -198,6 +199,7 @@ def test_streaming_parser_preserves_completed_evidence_when_cancelled(monkeypatc
 
 def test_dashboard_uses_alternate_screen_and_renders_streamed_events(monkeypatch):
     instances = []
+    scan_done = threading.Event()
 
     class FakeLive:
         def __init__(self, renderable, **kwargs):
@@ -221,17 +223,29 @@ def test_dashboard_uses_alternate_screen_and_renders_streamed_events(monkeypatch
                 "open_ports": [443], "services": [{"port": 443, "state": "open"}],
                 "vulnerability_findings": [],
             })
-            return NmapResult(
+            result = NmapResult(
                 test_name="Nmap Scan", target=", ".join(targets), status="success",
                 timestamp=datetime.now(), duration=0.1, metrics={"host_count": 1}, summary="done",
             )
+            scan_done.set()
+            return result
 
     monkeypatch.setattr(nmap_live, "Live", FakeLive)
     console = Console(file=StringIO(), force_terminal=True, width=110, height=32)
     session = nmap_live.run_live_nmap_dashboard(
-        ["app.example.test"], FakeScanner(), console, profile="vuln", key_reader=lambda: None,
+        ["app.example.test"], FakeScanner(), console, profile="vuln",
+        key_reader=lambda: "q" if scan_done.is_set() else None,
     )
     assert session.result.status == "success"
     assert instances[0]["screen"] is True
     assert instances[0]["auto_refresh"] is False
     assert instances[0]["updates"] >= 1
+
+    nested_console = Console(file=StringIO(), force_terminal=True, width=110, height=32)
+    with AlternateScreenSession(nested_console, enabled=True, wait_on_close=False):
+        nested = nmap_live.run_live_nmap_dashboard(
+            ["app.example.test"], FakeScanner(), nested_console, profile="vuln",
+            key_reader=lambda: "q",
+        )
+    assert nested.result.status == "success"
+    assert instances[1]["screen"] is False

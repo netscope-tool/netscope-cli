@@ -20,7 +20,11 @@ from rich.text import Text
 
 from netscope.modules.base import TestResult
 from netscope.modules.mtr import MTRTest
-from netscope.tui.terminal import single_key_reader
+from netscope.tui.terminal import (
+    is_alternate_screen_active,
+    request_exit_after_interaction,
+    single_key_reader,
+)
 
 
 @dataclass
@@ -165,13 +169,14 @@ def run_live_mtr_dashboard(
     state = f"Starting report batch · {cycles} cycles"
     keyboard = nullcontext(key_reader) if key_reader is not None else single_key_reader()
     last_frame_key = None
+    exit_requested = False
 
     try:
         with keyboard as read_key:
             with Live(
                 render_live_mtr_view(target, cycles, sample_count, 0, latest, state, console.height),
                 console=console,
-                screen=True,
+                screen=not is_alternate_screen_active(),
                 transient=False,
                 redirect_stdout=False,
                 redirect_stderr=False,
@@ -181,6 +186,7 @@ def run_live_mtr_dashboard(
                 while True:
                     key = read_key()
                     if key and key.lower() == "q":
+                        exit_requested = True
                         break
 
                     if process is None:
@@ -229,11 +235,14 @@ def run_live_mtr_dashboard(
                         last_frame_key = frame_key
                     time.sleep(0.1)
     except KeyboardInterrupt:
+        exit_requested = True
         state = "Stopped with Ctrl+C"
     finally:
         _stop_process(process)
 
     duration = time.monotonic() - session_started
+    if exit_requested:
+        request_exit_after_interaction()
     if latest is not None:
         latest.duration = duration
         latest.metrics["live_sample_count"] = sample_count

@@ -11,6 +11,7 @@ from netscope.core.config import AppConfig
 from netscope.modules.base import TestResult as MTRResult
 from netscope.modules.mtr import MTRTest
 from netscope.tui import mtr_live
+from netscope.tui.terminal import AlternateScreenSession
 
 _REPORT = """HOST: workstation
   1.|-- 192.0.2.1  0.0%  5  1.0  1.2  0.9  1.8  0.2
@@ -92,6 +93,13 @@ def test_live_dashboard_replaces_view_until_q(monkeypatch):
     assert "Sample 1" in session.result.raw_output
     assert "Sample 2" in session.result.raw_output
     assert len(csv.rows) > 0
+
+    nested_console = Console(file=StringIO(), force_terminal=True, width=100, height=30)
+    with AlternateScreenSession(nested_console, enabled=True, wait_on_close=False):
+        mtr_live.run_live_mtr_dashboard(
+            "example.com", scanner, nested_console, cycles=3, key_reader=lambda: "q",
+        )
+    assert screen_options == [True, False]
 
 
 def test_mtr_command_uses_report_batch_and_delimits_target():

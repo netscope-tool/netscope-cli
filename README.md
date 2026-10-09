@@ -55,6 +55,10 @@ Install `netscope-cli[reports]` only if you plan to execute generated Jupyter no
 - ✅ HTML reports and Jupyter notebook reports per run
 - ✅ Beautiful, educational terminal output (summaries, interpretations, glossary)
 
+### Terminal behavior
+
+When both input and output are terminals, NetScope runs in the terminal's alternate screen buffer, including the guided menu and direct diagnostic commands. Updates and final results stay off the primary scrollback. Live MTR/Nmap views accept `q`; in the guided workflow that saves the result and exits NetScope. Completed direct-command results stay visible until `q`. `Ctrl+C` interrupts or closes the active view and restores the original terminal. Help/version output, redirected commands, and explicit JSON output keep their normal non-screen behavior.
+
 For a deeper guide, see:
 
 - `docs/manual.md` – concepts, tests, interpreting results, reports.
