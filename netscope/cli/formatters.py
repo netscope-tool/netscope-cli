@@ -7,6 +7,7 @@ import urllib.request
 from typing import Iterable, Sequence
 
 from rich.console import Console
+from netscope.tui.theme import NETSCOPE_THEME
 from rich.panel import Panel
 from rich.table import Table
 from rich.align import Align
@@ -21,23 +22,16 @@ _network_status_cache: dict | None = None
 
 def print_header() -> None:
     """Print application header."""
-    console = Console()
+    console = Console(theme=NETSCOPE_THEME)
 
-    header_text = """
-    ╔═══════════════════════════════════════════════════════╗
-    ║                                                       ║
-    ║        NetScope - Network Diagnostics Tool            ║
-    ║                    Version 0.1.0                      ║
-    ║                                                       ║
-    ╚═══════════════════════════════════════════════════════╝
-    """
-
-    console.print(header_text, style="bold cyan")
+    from netscope import __version__
+    console.print(f"[bold cyan]NETSCOPE[/bold cyan]  [dim]network diagnostics · v{__version__}[/dim]")
+    console.print("[dim]Choose a workflow. Every run records its scope, measurements, and report path.[/dim]\n")
 
 
 def print_system_info(system_info: SystemInfo) -> None:
     """Print detected system information."""
-    console = Console()
+    console = Console(theme=NETSCOPE_THEME)
 
     table = Table(title="System Information", show_header=False, box=None)
     table.add_column("Property", style="cyan")
@@ -130,7 +124,7 @@ def format_test_result(result: TestResult, console: Console) -> None:
         metrics_table.add_column("Value", style="white")
 
         for key, value in result.metrics.items():
-            if key in ("hop_details", "devices", "alive_hosts", "services") or key.startswith("server_"):
+            if key in ("hop_details", "devices", "alive_hosts", "services", "subdomains", "findings", "recommendations") or key.startswith("server_"):
                 continue
             if key == "open_ports" and isinstance(value, list):
                 metrics_table.add_row("Open Ports", ", ".join(str(p) for p in value) if value else "None")
@@ -160,22 +154,65 @@ def format_test_result(result: TestResult, console: Console) -> None:
             console.print(Panel(server_line, title="Speedtest server", border_style="dim", padding=(0, 1)))
             console.print()
 
-    # Per-hop table for traceroute
+    # Per-hop table for traceroute and MTR.
     hop_details = (result.metrics or {}).get("hop_details")
     if isinstance(hop_details, list) and len(hop_details) > 0:
         hops_table = Table(title="Hops", show_header=True, box=None, padding=(0, 2))
         hops_table.add_column("Hop", style="cyan")
         hops_table.add_column("Host", style="white")
-        hops_table.add_column("RTT (ms)", style="white")
+        if any("packet_loss_percent" in h for h in hop_details):
+            hops_table.add_column("Loss", justify="right")
+            hops_table.add_column("Avg RTT (ms)", justify="right", style="white")
+            hops_table.add_column("Best / worst", justify="right", style="dim")
+        else:
+            hops_table.add_column("RTT (ms)", style="white")
         for h in hop_details[:20]:  # cap at 20 rows
             host = h.get("host", "—")
-            rtt = h.get("rtt_ms", 0)
+            rtt = h.get("rtt_ms", h.get("avg_ms", 0))
             rtt_str = f"{rtt:.1f}" if isinstance(rtt, (int, float)) else str(rtt)
-            hops_table.add_row(str(h.get("hop", "—")), str(host), rtt_str)
+            if "packet_loss_percent" in h:
+                best = h.get("best_ms", "—")
+                worst = h.get("worst_ms", "—")
+                best_worst = f"{best} / {worst}"
+                hops_table.add_row(
+                    str(h.get("hop", "—")), str(host),
+                    f"{h.get('packet_loss_percent', '—')}%", rtt_str, best_worst,
+                )
+            else:
+                hops_table.add_row(str(h.get("hop", "—")), str(host), rtt_str)
         if len(hop_details) > 20:
             hops_table.add_row("…", f"+{len(hop_details) - 20} more", "")
         console.print()
         console.print(hops_table)
+
+    services = (result.metrics or {}).get("services")
+    if isinstance(services, list) and services:
+        service_table = Table(title="Discovered Services", show_header=True, box=None, padding=(0, 2))
+        service_table.add_column("Port", style="cyan", justify="right")
+        service_table.add_column("State", style="white")
+        service_table.add_column("Service", style="white")
+        service_table.add_column("Product / version", style="dim")
+        for item in services[:40]:
+            product = " ".join(str(item.get(key) or "") for key in ("product", "version")).strip()
+            service_table.add_row(
+                str(item.get("port", "—")), str(item.get("state", "—")),
+                str(item.get("service", "—")), product or "—",
+            )
+        console.print(service_table)
+
+    subdomains = (result.metrics or {}).get("subdomains")
+    if isinstance(subdomains, list):
+        console.print(f"\n[bold]Certificate Transparency names:[/bold] {len(subdomains)} observed")
+        if subdomains:
+            console.print(Panel("\n".join(str(name) for name in subdomains[:50]), border_style="dim"))
+
+    findings = (result.metrics or {}).get("findings")
+    if isinstance(findings, list) and findings:
+        console.print(Panel("\n".join(f"• {finding}" for finding in findings), title="Observed findings", border_style="yellow"))
+
+    recommendations = (result.metrics or {}).get("recommendations")
+    if isinstance(recommendations, list) and recommendations:
+        console.print(Panel("\n".join(f"• {item}" for item in recommendations), title="Suggested next steps", border_style="cyan"))
 
     # Devices table for ARP scan (Vendor from OUI; Device Type from heuristic or nmap -O)
     devices = (result.metrics or {}).get("devices")

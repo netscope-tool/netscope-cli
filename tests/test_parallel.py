@@ -393,12 +393,15 @@ class TestParallelPortScan:
         assert open_ports == []
         assert closed_ports == []
 
-    def test_scan_ports_timeout(self):
-        """Test scan_ports respects timeout."""
-        # Use an unreachable host with short timeout
+    def test_scan_ports_timeout(self, monkeypatch):
+        """Test scan_ports classifies a socket timeout as a closed/unresponsive port."""
+        def timeout_connect(*_args, **_kwargs):
+            raise TimeoutError("simulated socket timeout")
+
+        monkeypatch.setattr("netscope.modules.ports.socket.create_connection", timeout_connect)
         ports = [80]
         open_ports, closed_ports = scan_ports("192.0.2.1", ports, timeout=0.1)
 
-        # Should timeout and mark as closed
+        assert open_ports == []
         assert len(closed_ports) == 1
         assert 80 in closed_ports

@@ -14,6 +14,7 @@ NetScope is a CLI tool for network diagnostics, testing, and reporting. It wraps
 - Structured results (CSV, logs, metadata)
 - HTML reports and Jupyter notebooks
 - Educational explainers, glossary, and troubleshooting wizard
+- Guided MTR route-quality and website exposure checks
 
 Use this manual to understand what each test does, how to interpret the results, and how to
 work with the generated reports.
@@ -87,12 +88,24 @@ work with the generated reports.
 
 ### Nmap Scan (optional)
 
-- **Command**: `netscope nmap-scan <target> [--ports ...]`
+- **Command**: `netscope nmap-scan <target> [--ports ...] [--profile connect|service|udp]`
 - **What it does**: Runs `nmap` with XML output and parses open ports and services.
 - **Key metrics**:
   - `open_ports`, `open_count`, `closed_count`, `filtered_count`
   - `hosts_up`, `hosts_down`
   - `services` – per-port service details (name, product, version)
+
+### Website Exposure Audit
+- **Command**: `netscope website-audit <hostname-or-url>`
+- **What it does**: Reads HTTP response headers, validates the TLS peer certificate, and optionally queries public Certificate Transparency records for names associated with the domain.
+- **Key metrics**: HTTP status and security headers, TLS issuer/subject/protocol/expiry when available, observed names and lookup status.
+- **Scope note**: Certificate Transparency names are historical/public issuance observations. NetScope does not connect to discovered names automatically. An unavailable lookup means coverage is incomplete.
+
+### MTR Route Quality
+- **Command**: `netscope mtr <target> --cycles 10`
+- **What it does**: Runs MTR in finite report mode and records per-hop loss and round-trip-time statistics.
+- **Key metrics**: Hop count, sent probes, loss percentage, average/best/worst RTT where supplied by the installed MTR version.
+- **Progress note**: Report mode returns measurements when sampling finishes; the interface uses an activity indicator and does not invent a percentage.
 
 ### ARP Scan
 
@@ -125,10 +138,9 @@ work with the generated reports.
   - `netscope report-html <run_dir>` – HTML only.
   - `netscope report <run_dir>` – HTML + notebook (default).
 - Contains:
-  - Header with test, target, status, timestamp.
-  - System information card.
-  - “Tests by Status” chart (Chart.js).
-  - One card per test with metrics.
+  - Target, status, run time, and environment facts.
+  - Structured measurements, including nested service, certificate, and hop data.
+  - Warm-neutral monospace styling aligned with the terminal; no remote JavaScript/chart dependency.
 
 ## Notebook Reports
 
@@ -146,4 +158,3 @@ work with the generated reports.
 - `netscope glossary [term]` – definitions for networking terms.
 - `netscope troubleshoot` – guided troubleshooting wizard.
 - `netscope examples` – common usage scenarios.
-

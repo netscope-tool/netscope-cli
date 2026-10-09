@@ -11,6 +11,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
 from rich.console import Console
+from netscope.tui.theme import NETSCOPE_THEME
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
@@ -49,7 +50,7 @@ class AggregatedDashboard:
     
     def __init__(self, console: Optional[Console] = None):
         """Initialize aggregated dashboard."""
-        self.console = console or Console()
+        self.console = console or Console(theme=NETSCOPE_THEME)
         self.network_info: Optional[NetworkInfo] = None
         self.system_info: Optional[SystemInfo] = None
         self.devices: List[DiscoveredDevice] = []

@@ -11,6 +11,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from rich.console import Console, Group
+from netscope.tui.theme import NETSCOPE_THEME
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
@@ -49,7 +50,7 @@ class NetworkDashboard:
         Args:
             console: Rich console instance
         """
-        self.console = console or Console()
+        self.console = console or Console(theme=NETSCOPE_THEME)
         self.metrics = NetworkMetrics()
         self.test_history: List[Dict[str, Any]] = []
         self.max_history = 10
@@ -383,7 +384,7 @@ class TestProgressDisplay:
         Args:
             console: Rich console instance
         """
-        self.console = console or Console()
+        self.console = console or Console(theme=NETSCOPE_THEME)
         self.progress = Progress(
             SpinnerColumn(),
             TextColumn("[bold blue]{task.description}"),

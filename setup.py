@@ -29,11 +29,8 @@ setup(
         "typer>=0.9.0",
         "rich>=13.0.0",
         "questionary>=2.0.0",
-        "pandas>=2.0.0",
         "loguru>=0.7.0",
         "pydantic>=2.0.0",
-        "pydantic-settings>=2.0.0",
-        "python-dateutil>=2.8.0",
         "PyYAML>=6.0",
     ],
     extras_require={
@@ -57,6 +54,7 @@ setup(
             "netifaces>=0.11.0",
             "aiohttp>=3.9.0",
         ],
+        "reports": ["pandas>=2.0.0"],
     },
     entry_points={
         "console_scripts": [

@@ -17,6 +17,7 @@ from rich.console import Console
 from rich.live import Live
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TaskProgressColumn
 from rich.spinner import Spinner
+from netscope.tui.theme import NETSCOPE_THEME
 
 from netscope.cli.formatters import (
     format_quick_check_summary,
@@ -34,6 +35,8 @@ from netscope.modules.connectivity import PingTest, TracerouteTest
 from netscope.modules.dns import DNSTest
 from netscope.modules.ports import PORT_PRESET_TOP20, PORT_PRESET_TOP100, PortScanTest
 from netscope.modules.nmap_scan import NmapScanTest
+from netscope.modules.mtr import MTRTest
+from netscope.modules.website_audit import WebsiteAuditTest
 from netscope.modules.arp_scan_enhanced import ARPScanTestEnhanced
 from netscope.modules.ping_sweep import PingSweepTest
 from netscope.modules.bandwidth import BandwidthTest, list_speedtest_servers, is_speedtest_available, try_install_speedtest_cli
@@ -47,7 +50,7 @@ app = typer.Typer(
     add_completion=False,
 )
 
-console = Console()
+console = Console(theme=NETSCOPE_THEME)
 
 
 def _init_context(output_dir: Optional[Path], verbose: bool):
@@ -84,6 +87,26 @@ def _create_run_artifacts(config: AppConfig, logger, test_name: str):
     executor = TestExecutor(SystemDetector().detect_system(), logger)
 
     return test_run_dir, csv_handler, executor
+
+
+def _save_raw_output(test_run_dir: Path, filename: str, raw_output: Optional[str]) -> None:
+    """Preserve tool evidence alongside structured CSV metrics when present."""
+    if not raw_output:
+        return
+    raw_dir = test_run_dir / "raw_output"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    (raw_dir / filename).write_text(raw_output, encoding="utf-8", errors="replace")
+
+
+def _recent_run_directories(output_dir: Path, limit: int = 20) -> list[Path]:
+    """Return recent result folders for the interactive report picker."""
+    if limit <= 0 or not output_dir.is_dir():
+        return []
+    runs = [
+        path for path in output_dir.iterdir()
+        if path.is_dir() and (path / "results.csv").is_file()
+    ]
+    return sorted(runs, key=lambda path: path.name, reverse=True)[:limit]
 
 
 def _output_results_json(results: Iterable, pretty: bool = True) -> None:
@@ -180,10 +203,39 @@ def _run_interactive(
             input()
             continue
 
+        if choice == "Generate HTML Report":
+            run_dirs = _recent_run_directories(config.output_dir)
+            if not run_dirs:
+                console.print("[dim]No saved test runs are available to report yet.[/dim]")
+                continue
+            report_choices = []
+            for run_dir in run_dirs:
+                label = run_dir.name
+                try:
+                    metadata = json.loads((run_dir / "metadata.json").read_text(encoding="utf-8"))
+                    label = " · ".join(filter(None, [
+                        str(metadata.get("test_type", "Run")),
+                        str(metadata.get("target", "")),
+                        run_dir.name,
+                    ]))
+                except (OSError, json.JSONDecodeError):
+                    pass
+                report_choices.append(Choice(label, value=run_dir))
+            selected_run = questionary.select("Choose a saved run to report:", choices=report_choices).ask()
+            if selected_run is None:
+                continue
+            try:
+                from netscope.report.html_report import generate_html_report
+                report_path = generate_html_report(selected_run)
+                console.print(f"[green]HTML report generated:[/green] {report_path}")
+            except (OSError, ValueError) as exc:
+                console.print(f"[red]Could not generate the report:[/red] {exc}")
+            continue
+
         # Determine target / input per test
         target: Optional[str] = None
 
-        if choice in {"Ping Test", "Traceroute Test", "DNS Lookup", "Port Scan", "Nmap Scan", "Quick Network Check"}:
+        if choice in {"Ping Test", "Traceroute Test", "DNS Lookup", "Port Scan", "Nmap Scan", "Quick Network Check", "MTR Route Quality", "Website Exposure Audit"}:
             console.print(
                 "[dim]  Examples: 8.8.8.8, 1.1.1.1, google.com, example.com[/dim]"
             )
@@ -398,11 +450,22 @@ def _run_interactive(
                 results = [result]
             elif choice == "Nmap Scan":
                 console.print("\n[dim]Note: This test requires the external `nmap` tool to be installed.[/dim]\n")
+                profile = questionary.select(
+                    "Nmap scan profile:",
+                    choices=[
+                        Choice("Service details · light version probe", value="service"),
+                        Choice("Quick TCP inventory · no version probe", value="connect"),
+                        Choice("Top 20 UDP ports · slower, privilege may be required", value="udp"),
+                    ],
+                    default="service",
+                ).ask()
+                if profile is None:
+                    continue
                 test = NmapScanTest(executor, csv_handler)
                 _result_holder = []
 
                 def _run():
-                    _result_holder.append(test.run(target))
+                    _result_holder.append(test.run(target, profile=profile))
 
                 _t = threading.Thread(target=_run)
                 _t.start()
@@ -410,7 +473,47 @@ def _run_interactive(
                     while _t.is_alive():
                         _t.join(timeout=0.05)
                 result = _result_holder[0]
+                _save_raw_output(test_run_dir, "nmap.xml", result.raw_output)
                 results = [result]
+            elif choice == "MTR Route Quality":
+                cycles = questionary.select(
+                    "How many route-quality samples?",
+                    choices=[Choice("5 cycles · quick", value=5), Choice("10 cycles · standard", value=10), Choice("20 cycles · detailed", value=20)],
+                    default=10,
+                ).ask()
+                if cycles is None:
+                    continue
+                test = MTRTest(executor, csv_handler)
+                _result_holder = []
+                _t = threading.Thread(target=lambda: _result_holder.append(test.run(target, cycles=cycles)))
+                _t.start()
+                with Live(Spinner("dots", text=f"Measuring path quality · {cycles} cycles…"), console=console, refresh_per_second=8):
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                _save_raw_output(test_run_dir, "mtr.txt", _result_holder[0].raw_output)
+                results = [_result_holder[0]]
+            elif choice == "Website Exposure Audit":
+                include_subdomains = questionary.confirm(
+                    "Include passive Certificate Transparency name discovery?", default=True,
+                ).ask()
+                if include_subdomains is None:
+                    continue
+                from netscope.modules.website_audit import normalize_website_target
+                normalize_website_target(target)
+                test = WebsiteAuditTest(executor, csv_handler)
+                _result_holder = []
+                with Progress(SpinnerColumn(), TextColumn("[dim]{task.description}[/dim]"), console=console) as progress:
+                    task = progress.add_task("Preparing website checks…", total=None)
+                    _t = threading.Thread(target=lambda: _result_holder.append(
+                        test.run(
+                            target, include_subdomains=include_subdomains,
+                            progress_callback=lambda message: progress.update(task, description=message),
+                        )
+                    ))
+                    _t.start()
+                    while _t.is_alive():
+                        _t.join(timeout=0.05)
+                results = [_result_holder[0]]
             elif choice == "ARP Scan":
                 console.print("\n[dim]Scanning local ARP table for devices...[/dim]\n")
                 test = ARPScanTestEnhanced(executor, csv_handler)
@@ -523,15 +626,16 @@ def _run_interactive(
                     format_test_result(results[0], console)
 
                 primary_result = results[0]
-                config.save_metadata(
-                    test_run_dir,
-                    {
-                        "test_type": choice,
-                        "target": target,
-                        "status": primary_result.status,
-                        "system_info": system_info.model_dump(mode="json"),
-                    },
-                )
+                metadata = {
+                    "test_type": choice,
+                    "target": target,
+                    "status": primary_result.status,
+                    "duration_seconds": primary_result.duration,
+                    "system_info": system_info.model_dump(mode="json"),
+                }
+                if choice == "Nmap Scan":
+                    metadata["scan_profile"] = profile
+                config.save_metadata(test_run_dir, metadata)
                 console.print(f"\n[bold green]✓ Results saved to:[/bold green] {test_run_dir}")
                 console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
                 print_network_status(console)
@@ -784,10 +888,13 @@ def show_main_menu() -> str:
         Choice("DNS Lookup — Resolve hostname to IP address(es)", value="DNS Lookup"),
         Choice("Port Scan — Check which TCP ports are open", value="Port Scan"),
         Choice("Nmap Scan — Detailed port & service scan (requires nmap)", value="Nmap Scan"),
+        Choice("Website Audit — HTTP headers, TLS certificate & passive subdomains", value="Website Exposure Audit"),
+        Choice("MTR — Per-hop latency and packet-loss report", value="MTR Route Quality"),
         Choice("ARP Scan — Discover devices on local network", value="ARP Scan"),
         Choice("Ping Sweep — Find alive hosts in a network range", value="Ping Sweep"),
         Choice("Speedtest — Download/upload speed (choose server or auto)", value="Speedtest"),
         Choice("Dashboard — Aggregated network, system, devices & security view", value="Dashboard"),
+        Choice("Generate HTML Report — Select a saved run", value="Generate HTML Report"),
         Choice("Exit", value="Exit"),
     ]
 
@@ -1079,6 +1186,12 @@ def nmap_scan(
         "-p",
         help="Ports to scan (e.g. '22,80,443' or '1-1024'). If omitted, nmap defaults are used.",
     ),
+    profile: str = typer.Option(
+        "service",
+        "--profile",
+        help="Scan profile: connect (quick TCP), service (light version detection), or udp (top 20 UDP).",
+    ),
+    timeout: int = typer.Option(120, "--timeout", min=1, max=3600, help="Maximum scan duration in seconds."),
 ):
     """
     Run an nmap-based port and service scan (requires `nmap` to be installed).
@@ -1089,12 +1202,17 @@ def nmap_scan(
     csv_handler = CSVHandler(test_run_dir / "results.csv")
     executor = TestExecutor(system_info, logger)
 
-    console.print(f"\n[bold cyan]Running Nmap Scan on {target}...[/bold cyan]\n")
+    if profile not in {"connect", "service", "udp"}:
+        console.print("[red]Profile must be one of: connect, service, udp.[/red]")
+        raise typer.Exit(2)
+    scope = ports or {"connect": "fast top 100 TCP", "service": "Nmap default TCP ports", "udp": "top 20 UDP"}[profile]
+    console.print(f"\n[bold cyan]Nmap · {profile} · target {target} · scope {scope} · timeout {timeout}s[/bold cyan]")
+    console.print("[dim]Scan only systems you are authorized to assess.[/dim]\n")
     test = NmapScanTest(executor, csv_handler)
     _result_holder = []
 
     def _run() -> None:
-        _result_holder.append(test.run(target, ports=ports))
+        _result_holder.append(test.run(target, ports=ports, profile=profile, timeout=timeout))
 
     _t = threading.Thread(target=_run)
     _t.start()
@@ -1102,6 +1220,7 @@ def nmap_scan(
         while _t.is_alive():
             _t.join(timeout=0.05)
     result = _result_holder[0]
+    _save_raw_output(test_run_dir, "nmap.xml", result.raw_output)
 
     if output_format == "json":
         _output_results_json(result)
@@ -1113,12 +1232,99 @@ def nmap_scan(
         {
             "test_type": "Nmap Scan",
             "target": target,
+            "scan_profile": profile,
+            "ports": ports,
+            "timeout_seconds": timeout,
             "status": result.status,
+            "duration_seconds": result.duration,
             "system_info": system_info.model_dump(mode="json"),
         },
     )
 
     console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"  # HTML + notebook[/dim]")
+
+
+@app.command(name="mtr")
+def mtr_scan(
+    target: str = typer.Argument(..., help="Target IP or hostname"),
+    cycles: int = typer.Option(10, "--cycles", "-c", min=1, max=100, help="MTR probe cycles (1–100)."),
+    output_dir: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory for results"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich or json"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+):
+    """Run a finite MTR route-quality report (requires `mtr`)."""
+    config, logger, _detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("mtr_route_quality")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+    console.print(f"\n[bold]MTR route quality · {target} · {cycles} cycles[/bold]")
+    console.print("[dim]The report is emitted when MTR completes; no estimated percentage is shown.[/dim]")
+    _result_holder = []
+    _t = threading.Thread(target=lambda: _result_holder.append(
+        MTRTest(executor, csv_handler).run(_resolve_target(target), cycles=cycles)
+    ))
+    _t.start()
+    with Live(Spinner("dots", text=f"Sampling route · {cycles} cycles…"), console=console, refresh_per_second=8):
+        while _t.is_alive():
+            _t.join(timeout=0.05)
+    result = _result_holder[0]
+    _save_raw_output(test_run_dir, "mtr.txt", result.raw_output)
+    if output_format == "json":
+        _output_results_json(result)
+    else:
+        format_test_result(result, console)
+    config.save_metadata(test_run_dir, {
+        "test_type": "MTR Route Quality", "target": target, "status": result.status,
+        "cycles": cycles, "duration_seconds": result.duration,
+        "system_info": system_info.model_dump(mode="json"),
+    })
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
+
+
+@app.command(name="website-audit")
+def website_audit(
+    target: str = typer.Argument(..., help="Hostname or http(s) URL"),
+    no_subdomains: bool = typer.Option(False, "--no-subdomains", help="Skip passive Certificate Transparency lookup."),
+    output_dir: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory for results"),
+    output_format: str = typer.Option("rich", "--format", "-f", help="Output format: rich or json"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+):
+    """Inspect HTTP security headers and TLS posture; optionally list passive CT names."""
+    config, logger, _detector, system_info = _init_context(output_dir, verbose)
+    test_run_dir = config.create_test_run_dir("website_exposure_audit")
+    csv_handler = CSVHandler(test_run_dir / "results.csv")
+    executor = TestExecutor(system_info, logger)
+    console.print(f"\n[bold]Website exposure audit · {target}[/bold]")
+    console.print("[dim]CT name discovery reads public certificate records; discovered names are not probed.[/dim]")
+    try:
+        from netscope.modules.website_audit import normalize_website_target
+        normalize_website_target(target)
+        _result_holder = []
+        with Progress(SpinnerColumn(), TextColumn("[dim]{task.description}[/dim]"), console=console) as progress:
+            task = progress.add_task("Preparing website checks…", total=None)
+            _t = threading.Thread(target=lambda: _result_holder.append(
+                WebsiteAuditTest(executor, csv_handler).run(
+                    target, include_subdomains=not no_subdomains,
+                    progress_callback=lambda message: progress.update(task, description=message),
+                )
+            ))
+            _t.start()
+            while _t.is_alive():
+                _t.join(timeout=0.05)
+        result = _result_holder[0]
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    if output_format == "json":
+        _output_results_json(result)
+    else:
+        format_test_result(result, console)
+    config.save_metadata(test_run_dir, {
+        "test_type": "Website Exposure Audit", "target": result.target,
+        "status": result.status, "duration_seconds": result.duration,
+        "system_info": system_info.model_dump(mode="json"),
+    })
+    console.print(f"[dim]Hint: netscope report \"{test_run_dir}\"[/dim]")
 
 
 @app.command(name="arp-scan")
