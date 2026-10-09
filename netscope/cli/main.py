@@ -52,6 +52,7 @@ from netscope.modules.website_audit import WebsiteAuditTest
 from netscope.parallel.executor import BatchTestRunner, ParallelTestConfig
 from netscope.storage.csv_handler import CSVHandler
 from netscope.storage.logger import setup_logging
+from netscope.tui.terminal import exit_requested
 from netscope.tui.theme import NETSCOPE_THEME
 
 app = typer.Typer(
@@ -680,6 +681,9 @@ def _run_interactive(
             if guidance:
                 from rich.panel import Panel
                 console.print(Panel("\n".join(guidance), title="What to try", border_style="dim"))
+
+        if exit_requested():
+            raise KeyboardInterrupt
 
         # Ask if user wants to continue
         if not questionary.confirm("\nRun another test?", default=True).ask():

@@ -5,20 +5,28 @@ Minimalistic, terminal-like design inspired by Anthropic's UI principles.
 
 from __future__ import annotations
 
+import sys
 import time
-from datetime import datetime
-from typing import List, Dict, Any, Optional
+from contextlib import nullcontext
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from rich.align import Align
 from rich.console import Console, Group
-from netscope.tui.theme import NETSCOPE_THEME
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeRemainingColumn
 from rich.table import Table
 from rich.text import Text
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
-from rich.align import Align
+
+from netscope.tui.terminal import (
+    is_alternate_screen_active,
+    request_exit_after_interaction,
+    single_key_reader,
+)
+from netscope.tui.theme import NETSCOPE_THEME
 
 
 @dataclass
@@ -237,29 +245,48 @@ class NetworkDashboard:
         """
         layout = self.create_layout()
         start_time = time.time()
+        keyboard = single_key_reader() if sys.stdin.isatty() else nullcontext(lambda: None)
+        exit_requested = False
+        try:
+            with keyboard as read_key:
+                with Live(
+                    layout,
+                    console=self.console,
+                    refresh_per_second=2,
+                    screen=(
+                        not is_alternate_screen_active()
+                        and self.console.is_terminal
+                        and sys.stdin.isatty()
+                    ),
+                    auto_refresh=False,
+                ) as live:
+                    last_refresh = 0.0
+                    while True:
+                        key = read_key()
+                        if key and key.lower() == "q":
+                            exit_requested = True
+                            break
+                        if key and key.lower() == "h":
+                            self.console.print(
+                                "\n[dim]Dashboard keys: q = quit, r = refresh, h = help.[/dim]\n"
+                            )
+                            last_refresh = 0.0
 
-        with Live(layout, console=self.console, refresh_per_second=2, screen=True) as live:
-            while True:
-                # Update timestamp (in a real implementation, also refresh metrics from tests)
-                self.metrics.last_update = datetime.now()
+                        now = time.time()
+                        if now - last_refresh >= 0.5 or (key and key.lower() == "r"):
+                            self.metrics.last_update = datetime.now()
+                            self.render(layout)
+                            live.update(layout, refresh=True)
+                            last_refresh = now
 
-                # Render dashboard
-                self.render(layout)
-                live.update(layout)
-
-                # Duration-based exit (for automated use)
-                if duration > 0 and time.time() - start_time > duration:
-                    break
-
-                # Simple key handling: Q=quit, R=refresh, H=help
-                cmd = self.console.input("[dim][Q]uit, [R]efresh, [H]elp >[/dim] ").strip().lower()
-                if cmd == "q":
-                    break
-                if cmd == "h":
-                    self.console.print(
-                        "\n[dim]Dashboard keys: Q = quit, R = refresh (re-render), H = help.[/dim]\n"
-                    )
-                # For 'r' or empty input, just loop and re-render
+                        if duration > 0 and now - start_time > duration:
+                            break
+                        time.sleep(0.05)
+        except KeyboardInterrupt:
+            exit_requested = True
+        finally:
+            if exit_requested:
+                request_exit_after_interaction()
     
     def _get_latency_color(self, latency: float) -> str:
         """Get color for latency value."""
@@ -368,7 +395,7 @@ class DeviceTable:
         try:
             parts = ip.split(".")
             return (int(parts[0]) << 24) + (int(parts[1]) << 16) + (int(parts[2]) << 8) + int(parts[3])
-        except:
+        except (IndexError, TypeError, ValueError):
             return 0
 
 

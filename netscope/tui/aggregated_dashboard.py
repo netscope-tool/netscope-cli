@@ -5,28 +5,31 @@ discovered devices with categorization, and security overview.
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime
-from typing import List, Dict, Any, Optional
+import time
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Dict, List, Optional
 
+from rich.align import Align
 from rich.console import Console
-from netscope.tui.theme import NETSCOPE_THEME
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from netscope.utils.network_info import get_network_info, NetworkInfo
-from netscope.utils.system_info import get_system_info, SystemInfo
-from netscope.utils.device_classifier import (
-    categorize_device, 
-    get_category_icon, 
-    get_category_color,
-    get_category_description,
+from netscope.tui.terminal import (
+    is_alternate_screen_active,
+    request_exit_after_interaction,
+    single_key_reader,
 )
+from netscope.tui.theme import NETSCOPE_THEME
+from netscope.utils.device_classifier import (
+    get_category_color,
+    get_category_icon,
+)
+from netscope.utils.network_info import NetworkInfo
+from netscope.utils.system_info import SystemInfo
 
 
 @dataclass
@@ -380,26 +383,32 @@ class AggregatedDashboard:
         Args:
             duration: Optional duration in seconds (None for indefinite)
         """
-        with Live(self.create_layout(), console=self.console, refresh_per_second=1) as live:
-            start_time = datetime.now()
-            
-            try:
-                while True:
-                    # Update layout
-                    live.update(self.create_layout())
-                    
-                    # Check duration
-                    if duration:
-                        elapsed = (datetime.now() - start_time).total_seconds()
-                        if elapsed >= duration:
+        start_time = time.monotonic()
+        exit_requested = False
+        try:
+            with single_key_reader() as read_key:
+                with Live(
+                    self.create_layout(),
+                    console=self.console,
+                    refresh_per_second=2,
+                    screen=not is_alternate_screen_active() and self.console.is_terminal,
+                    auto_refresh=False,
+                ) as live:
+                    last_refresh = 0.0
+                    while True:
+                        key = read_key()
+                        if key and key.lower() == "q":
+                            exit_requested = True
                             break
-                    
-                    # Sleep
-                    import time
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                pass
-
-
-# Import statement for Align
-from rich.align import Align
+                        now = time.monotonic()
+                        if now - last_refresh >= 0.5 or (key and key.lower() == "r"):
+                            live.update(self.create_layout(), refresh=True)
+                            last_refresh = now
+                        if duration is not None and now - start_time >= duration:
+                            break
+                        time.sleep(0.05)
+        except KeyboardInterrupt:
+            exit_requested = True
+        finally:
+            if exit_requested:
+                request_exit_after_interaction()

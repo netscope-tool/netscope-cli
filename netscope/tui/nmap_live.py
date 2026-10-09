@@ -20,7 +20,11 @@ from rich.text import Text
 from netscope.modules.base import TestResult
 from netscope.modules.nmap_scan import NmapScanTest, normalize_targets
 from netscope.tui.mtr_live import _elapsed_text
-from netscope.tui.terminal import single_key_reader
+from netscope.tui.terminal import (
+    is_alternate_screen_active,
+    request_exit_after_interaction,
+    single_key_reader,
+)
 
 
 @dataclass
@@ -130,7 +134,7 @@ def render_live_nmap_view(
 
     footer = Text(
         "Progress is reported by Nmap; completed host results appear as they arrive.\n"
-        "Press q or Ctrl+C to cancel  ·  Safe NSE script evidence is not an exploit confirmation",
+        "Press q or Ctrl+C to stop or close  ·  Safe NSE script evidence is not an exploit confirmation",
         style="dim",
         justify="center",
     )
@@ -198,6 +202,7 @@ def run_live_nmap_dashboard(
     worker.start()
     keyboard = nullcontext(key_reader) if key_reader is not None else single_key_reader()
     cancelled = False
+    exit_requested = False
     last_frame_key = None
 
     try:
@@ -205,19 +210,23 @@ def run_live_nmap_dashboard(
             with Live(
                 render_live_nmap_view(target_list, profile, ports, progress, completed_hosts, 0, state, console.height),
                 console=console,
-                screen=True,
+                screen=not is_alternate_screen_active(),
                 transient=False,
                 redirect_stdout=False,
                 redirect_stderr=False,
                 auto_refresh=False,
                 refresh_per_second=10,
             ) as live:
-                while worker.is_alive():
+                while worker.is_alive() or not exit_requested:
                     key = read_key()
                     if key and key.lower() == "q" and not cancelled:
-                        cancelled = True
-                        cancel_event.set()
-                        state = "Cancelling scan; preserving completed evidence…"
+                        exit_requested = True
+                        if worker.is_alive():
+                            cancelled = True
+                            cancel_event.set()
+                            state = "Cancelling scan; preserving completed evidence…"
+                        else:
+                            state = "Closing completed scan view"
 
                     received_event = False
                     try:
@@ -258,9 +267,13 @@ def run_live_nmap_dashboard(
                             refresh=True,
                         )
                         last_frame_key = frame_key
+                    if exit_requested and not worker.is_alive():
+                        break
     except KeyboardInterrupt:
-        cancelled = True
-        cancel_event.set()
+        exit_requested = True
+        cancelled = worker.is_alive()
+        if cancelled:
+            cancel_event.set()
     finally:
         if worker.is_alive():
             cancel_event.set()
@@ -281,4 +294,6 @@ def run_live_nmap_dashboard(
             error="Operator cancelled the scan.",
         )
     cancelled = cancelled and result.status == "warning"
+    if exit_requested:
+        request_exit_after_interaction()
     return LiveNmapSession(result, cancelled, time.monotonic() - started)

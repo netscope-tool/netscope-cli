@@ -14,6 +14,10 @@ netscope main         # same as running netscope with no args
 - **`netscope` / `netscope main`** – start the interactive menu.
 - **`--version`** – print the current NetScope version.
 
+### Alternate-screen behavior
+
+On a real TTY, the installed `netscope` launcher opens one alternate-screen session for the full command, so command output and Rich progress do not enter the primary terminal scrollback. Live MTR/Nmap/dashboard views accept `q` to close; in the guided workflow this saves the current result and exits NetScope. Completed direct-command results remain visible until `q`. `Ctrl+C` interrupts or closes the active view and restores the original screen. `--help`, `--version`, redirected output, and explicit `--format json` bypass the screen wrapper.
+
 ## Core tests
 
 ### `netscope ping`
